@@ -1,4 +1,14 @@
 # History files
+# Pipeline outputs and caches
+data/
+.cache/
+*.parquet
+!inst/fixtures/*.parquet
+!inst/lookups/*.parquet
+
+# Claude session-local
+.claude/settings.local.json
+
 .Rhistory
 .Rapp.history
 

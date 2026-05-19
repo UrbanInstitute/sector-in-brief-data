@@ -1,0 +1,42 @@
+vintage: "2026.05"
+
+inputs:
+  bmf: "s3://nccsdata/geocoding/bmf-master/merged/bmf_master_geocoded.parquet"
+  core_harmonized: "s3://nccsdata/processed_merged/core/"
+
+  daf:
+    orgs:
+      2021: "https://nccs-efile.s3.us-east-1.amazonaws.com/public/efile_v2_1/SD-P01-T00-ORGS-DONOR-ADVISED-FUNDS-OTH-2021.CSV"
+      2022: "https://nccs-efile.s3.us-east-1.amazonaws.com/public/efile_v2_1/SD-P01-T00-ORGS-DONOR-ADVISED-FUNDS-OTH-2022.CSV"
+      2023: "https://nccs-efile.s3.us-east-1.amazonaws.com/public/efile_v2_1/SD-P01-T00-ORGS-DONOR-ADVISED-FUNDS-OTH-2023.CSV"
+      2024: "https://nccs-efile.s3.us-east-1.amazonaws.com/public/efile_v2_1/SD-P01-T00-ORGS-DONOR-ADVISED-FUNDS-OTH-2024.CSV"
+    assets:
+      2021: "https://nccs-efile.s3.us-east-1.amazonaws.com/public/efile_v2_1/F9-P10-T00-BALANCE-SHEET-2021.CSV"
+      2022: "https://nccs-efile.s3.us-east-1.amazonaws.com/public/efile_v2_1/F9-P10-T00-BALANCE-SHEET-2022.CSV"
+      2023: "https://nccs-efile.s3.us-east-1.amazonaws.com/public/efile_v2_1/F9-P10-T00-BALANCE-SHEET-2023.CSV"
+      2024: "https://nccs-efile.s3.us-east-1.amazonaws.com/public/efile_v2_1/F9-P10-T00-BALANCE-SHEET-2024.CSV"
+
+output:
+  bucket: "nccsdata"
+  prefix: "sector-in-brief"
+  sandbox_prefix: "sector-in-brief-sandbox"
+  also_publish_latest: true
+
+year_ranges:
+  number_nonprofits: [1989, 2026]
+  finances:          [1989, 2024]
+  gov_grants:        [1989, 2024]
+  pf_grants:         [1989, 2024]
+  pf_pri:            [1989, 2024]
+  daf:               [2020, 2024]
+
+lookups:
+  cbsa_crosswalk: "inst/lookups/cbsa_crosswalk.parquet"
+
+aws:
+  profile: "thiya"
+  region: "us-east-1"
+
+local:
+  cache_dir: ".cache"
+  fixtures_dir: "inst/fixtures"

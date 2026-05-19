@@ -1,0 +1,34 @@
+Package: sectorinbriefdata
+Title: Producer Pipeline for the Sector-in-Brief Dashboard Artifact
+Version: 0.0.0.9000
+Authors@R:
+    person("Thiyaghessan Poongundranar", email = "tpoongundranar@urban.org", role = c("aut", "cre"))
+Description: Reads canonical NCCS BMF, CORE, and DAF e-file
+    inputs from S3, applies per-panel aggregations, and publishes
+    vintage-tagged parquet to s3://nccsdata/sector-in-brief/vYYYY.MM/ for
+    consumption by the UrbanInstitute/sector-in-brief Shiny dashboard.
+License: file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Imports:
+    arrow,
+    aws.s3,
+    digest,
+    dplyr,
+    glue,
+    jsonlite,
+    nccsdata,
+    purrr,
+    readr,
+    rlang,
+    stringr,
+    tibble,
+    tidyr,
+    yaml
+Suggests:
+    testthat (>= 3.0.0),
+    withr
+Remotes:
+    UrbanInstitute/nccsdata
+Config/testthat/edition: 3

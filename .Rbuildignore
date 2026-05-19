@@ -1,0 +1,14 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+^LICENSE\.md$
+^NEW_REPO_BOOTSTRAP\.md$
+^CLAUDE\.md$
+^README\.md$
+^\.github$
+^\.git$
+^\.gitattributes$
+^\.gitignore$
+^pipeline$
+^\.cache$
+^data-raw$
+^\.claude$
