@@ -49,6 +49,12 @@ read_bmf <- function(path,
   bmf <- arrow::read_parquet(path)
   cbsa <- arrow::read_parquet(cbsa_crosswalk)
 
+  # Upstream BMF occasionally emits "" instead of NA for ungeocoded geo cells.
+  # Normalize so downstream filters and joins treat them consistently.
+  na_if_blank <- function(x) ifelse(!is.na(x) & nzchar(trimws(x)), x, NA_character_)
+  bmf$geo_state_abbr <- na_if_blank(bmf$geo_state_abbr)
+  bmf$geo_county     <- na_if_blank(bmf$geo_county)
+
   # Parse "YYYY-MM" → integer YYYY for org_year_last.
   org_year_last <- suppressWarnings(
     as.integer(substr(bmf$last_vintage_ym, 1, 4))
