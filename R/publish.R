@@ -4,7 +4,9 @@
 #' directory, builds + writes `_manifest.json`, then uploads the whole
 #' directory to `s3://{bucket}/{prefix}/v{vintage}/` via `aws s3 cp`.
 #'
-#' @param outputs named list: file basename (no extension) → tibble.
+#' @param outputs named list: file basename (no extension) → tibble (written
+#'   as parquet) OR `list(df = <tibble>, format = "csv"|"parquet")` for
+#'   explicit format control. CSVs are written with `arrow::write_csv_arrow`.
 #' @param config a config list from [read_config].
 #' @param sandbox if TRUE, publish to `output$sandbox_prefix` instead of
 #'   the production prefix.
@@ -19,13 +21,24 @@ publish_vintage <- function(outputs, config, sandbox = TRUE, dry_run = FALSE) {
                      paste0("v", config$vintage, if (sandbox) "-sandbox" else ""))
   dir.create(stage, recursive = TRUE, showWarnings = FALSE)
 
-  # Write parquets to staging.
+  # Write outputs to staging. Each entry is either a tibble (→ parquet) or
+  # list(df, format).
   outputs_meta <- list()
   for (name in names(outputs)) {
-    df  <- outputs[[name]]
-    pq  <- file.path(stage, paste0(name, ".parquet"))
-    arrow::write_parquet(df, pq, compression = "snappy")
-    outputs_meta[[paste0(name, ".parquet")]] <- list(path = pq, df = df)
+    entry <- outputs[[name]]
+    if (inherits(entry, "data.frame")) {
+      df <- entry; fmt <- "parquet"
+    } else {
+      df  <- entry$df
+      fmt <- entry$format %||% "parquet"
+    }
+    out_path <- file.path(stage, paste0(name, ".", fmt))
+    switch(fmt,
+      parquet = arrow::write_parquet(df, out_path, compression = "snappy"),
+      csv     = arrow::write_csv_arrow(df, out_path),
+      stop("Unknown output format: ", fmt, call. = FALSE)
+    )
+    outputs_meta[[paste0(name, ".", fmt)]] <- list(path = out_path, df = df)
   }
 
   # Manifest.

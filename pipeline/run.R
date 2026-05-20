@@ -131,5 +131,27 @@ years_daf <- seq.int(daf_range[1], daf_range[2])
 panels$daf <- build_daf(daf, org_metadata, years_daf)
 message("daf rows: ", format(nrow(panels$daf), big.mark = ","))
 
+# ---- 4d. Static dimension files --------------------------------------------
+panels$nested_geographies <- list(df = build_nested_geographies(bmf),
+                                  format = "csv")
+message("nested_geographies rows: ",
+        format(nrow(panels$nested_geographies$df), big.mark = ","))
+
+# ---- 4e. Data dictionary ----------------------------------------------------
+# Build from the actual schemas + curated descriptions. Lives in the same
+# vintage prefix so it's pinned to the data it documents.
+dd_panels <- list()
+for (nm in names(panels)) {
+  entry <- panels[[nm]]
+  fname <- if (inherits(entry, "data.frame"))
+    paste0(nm, ".parquet")
+  else
+    paste0(nm, ".", entry$format %||% "parquet")
+  dd_panels[[fname]] <- if (inherits(entry, "data.frame")) entry else entry$df
+}
+panels$data_dictionary <- build_data_dictionary(dd_panels)
+message("data_dictionary rows: ",
+        format(nrow(panels$data_dictionary), big.mark = ","))
+
 # ---- 5. Publish -------------------------------------------------------------
 publish_vintage(panels, cfg, sandbox = !to_prod, dry_run = dry_run)
