@@ -20,8 +20,19 @@ Authoritative sources that constrain this repo's behavior — consult before des
 2. `../nccs-contracts/contracts/sector-in-brief.yml` — output contract (stub; this repo fills it).
 3. `../nccs-contracts/contracts/bmf-master-geocoded.yml` — BMF input contract.
 4. `../nccs-contracts/decisions/0011-decouple-dashboard-from-committed-data.md` — what the dashboard does once we publish.
-5. `../sector-in-brief/R/options_nogeo.R` and `../sector-in-brief/R/data_server_args.R` — **truth** for output column names, panel names, value sets. Output schema must match these strings verbatim.
+5. `../sector-in-brief/R/options_nogeo.R` and `../sector-in-brief/R/data_server_args.R` — prior dashboard string conventions (`Asset Size`, `Census CBSA`, `Tax Year`). **No longer authoritative** — see "Output naming" below. The dashboard updates to the cleaner names emitted by this repo, not the other way around.
 6. `../nccs-dataexplorer-data/` (archived after parity) — prior implementation; lift business logic, leave the structure.
+
+## Output naming (authoritative)
+
+This repo's panel output column names are the contract. The dashboard conforms. Specifically:
+
+- `Size` — static per-EIN size band by total **expenses** (NOT assets — the dashboard's prior `Asset Size` label is a misnomer; expenses is what `derive_size` consumes).
+- `Metro/Micro Area` — OMB CBSA name. Replaces the dashboard's prior `Census CBSA` (which was an internal join-key name, not a user-facing concept).
+- `Year` — tax year as reported on the filing. Replaces the dashboard's prior `Tax Year`.
+- All other dimension columns retain the title-case names already in use (`Organization Type`, `Subsector`, `Census Region`, `Census State`, `Census County`).
+
+`R/data_dictionary_curation.R` carries the per-(file, column) descriptions; `build_data_dictionary()` fails loudly if a panel column lacks a description or a curated entry has gone stale.
 
 ## Architecture (target — not yet implemented)
 

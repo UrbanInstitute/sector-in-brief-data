@@ -1,6 +1,8 @@
 .daf_org <- function(eins = c("A", "B")) {
   tibble::tibble(
     ein = eins,
+    org_year_first = 2020L,
+    org_year_last  = 2024L,
     `Organization Type` = "501(c)(3) Public Charities",
     Subsector = "PHIL",
     Size = 4L,
@@ -26,10 +28,26 @@ test_that("build_daf aggregates the four dollar/count metrics", {
   )
   out <- build_daf(daf, .daf_org(), years = 2022L)
   expect_equal(nrow(out), 1L)
-  expect_equal(out$`Number of DAFs`,      5)
-  expect_equal(out$`Total Contributions`, 300)
-  expect_equal(out$`Total Grants`,        125)
-  expect_equal(out$`Total Value`,         5000)
+  expect_equal(out$`Number of Nonprofits`, 2L)
+  expect_equal(out$`Number of DAFs`,       5)
+  expect_equal(out$`Total Contributions`,  300)
+  expect_equal(out$`Total Grants`,         125)
+  expect_equal(out$`Total Value`,          5000)
+})
+
+test_that("build_daf emits cells with zero DAF activity (Has DAF=0, NA dollars)", {
+  # Two BMF-active orgs in 2022, only A files a DAF. Cell shows both orgs but
+  # Has DAF = 1.
+  daf <- .daf_row("A", 2022, num = 2, contr = 100, grants = 50, value = 1000)
+  out <- build_daf(daf, .daf_org(c("A","B")), years = 2022L)
+  expect_equal(out$`Number of Nonprofits`, 2L)  # both BMF-active
+  expect_equal(out$`Has DAF`,              1L)  # only A files DAF
+  # Now a year with no DAF filings — cell should still appear (BMF orgs active)
+  out_2023 <- build_daf(daf, .daf_org(c("A","B")), years = 2023L)
+  expect_equal(nrow(out_2023), 1L)
+  expect_equal(out_2023$`Has DAF`, 0L)
+  expect_true(is.na(out_2023$`Number of DAFs`))
+  expect_true(is.na(out_2023$`Total Contributions`))
 })
 
 test_that("build_daf counts orgs in a cell with num_dafs > 0 for Has DAF", {
@@ -40,6 +58,7 @@ test_that("build_daf counts orgs in a cell with num_dafs > 0 for Has DAF", {
   )
   out <- build_daf(daf, .daf_org(c("A","B","C")), years = 2022L)
   expect_equal(out$`Has DAF`, 1L)
+  expect_equal(out$`Number of Nonprofits`, 3L)
 })
 
 test_that("build_daf groups by Year", {
@@ -53,7 +72,7 @@ test_that("build_daf groups by Year", {
   expect_equal(by_year[["2023"]], 200)
 })
 
-test_that("build_daf inner-joins on EIN (orphan DAF rows are dropped)", {
+test_that("build_daf inner-joins DAF on EIN (orphan DAF rows are dropped)", {
   daf <- dplyr::bind_rows(
     .daf_row("A", 2022, contr = 100),
     .daf_row("ORPHAN", 2022, contr = 9999)
@@ -78,6 +97,7 @@ test_that("build_daf emits the contract schema", {
                c("Organization Type", "Subsector", "Size",
                  "Census Region", "Census State", "Census County",
                  "Metro/Micro Area", "Year",
+                 "Number of Nonprofits",
                  "Number of DAFs", "Total Contributions",
                  "Total Grants", "Total Value", "Has DAF"))
   expect_type(out$Year, "integer")

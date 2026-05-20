@@ -6,19 +6,22 @@
 
 #' Build the daf panel
 #'
-#' Aggregates the DAF e-file orgs schedule by (Year, dimensions). Inner-joins
-#' on `ein` — cells with no DAF activity simply don't appear (the dashboard
-#' treats missing cells as zero activity).
+#' Produces one row per (Year, dim) cell that has at least one BMF-active org
+#' in the year. Dim cells with no DAF activity appear with `Has DAF = 0` and
+#' NA dollar metrics — necessary so the dashboard's "% of nonprofits with
+#' DAFs" computation has a denominator everywhere.
 #'
-#' `Has DAF` is a count of DAF-filing orgs in the cell (per-org boolean
-#' summed across orgs), not a rate. Old pipeline produced this from a BMF
-#' left-join with case_when; here we just count rows where `num_dafs > 0`.
+#' `Number of Nonprofits` is the BMF active-window count per cell (same
+#' semantics as the number_nonprofits panel). `Has DAF` is the count of orgs
+#' in the cell with `num_dafs > 0`. The DAF Proportion view divides one by
+#' the other.
 #'
 #' @param daf tibble from [read_daf] (canonical schema:
 #'   `ein`, `tax_year`, `num_dafs`, `contributions`, `grants`, `value`).
 #' @param org_metadata tibble from [build_org_metadata].
 #' @param years integer vector of tax years to keep.
-#' @return tibble with `.DAF_DIMS`, `Year` (int32), and the five metrics.
+#' @return tibble with `.DAF_DIMS`, `Year` (int32), `Number of Nonprofits`
+#'   (int32), and the five DAF metrics.
 #' @export
 build_daf <- function(daf, org_metadata, years) {
   stopifnot(all(c("ein", .DAF_DIMS) %in% names(org_metadata)))
@@ -26,12 +29,17 @@ build_daf <- function(daf, org_metadata, years) {
                   "grants", "value") %in% names(daf)))
   years <- as.integer(years)
 
+  # Denominator cells: BMF active-window counts per (Year, dim) — same shape
+  # as the number_nonprofits panel.
+  nn <- build_number_nonprofits(org_metadata, years)
+
+  # Numerator: per-cell DAF aggregates.
   daf <- daf[!is.na(daf$tax_year) & daf$tax_year %in% years, , drop = FALSE]
   org <- org_metadata[, c("ein", .DAF_DIMS), drop = FALSE]
   joined <- dplyr::inner_join(daf, org, by = "ein")
   joined$has_daf <- as.integer(!is.na(joined$num_dafs) & joined$num_dafs > 0)
 
-  out <- joined |>
+  daf_agg <- joined |>
     dplyr::group_by(dplyr::across(dplyr::all_of(c(.DAF_DIMS, "tax_year")))) |>
     dplyr::summarise(
       `Number of DAFs`      = .daf_na_sum(.data$num_dafs),
@@ -42,10 +50,15 @@ build_daf <- function(daf, org_metadata, years) {
       .groups = "drop"
     ) |>
     dplyr::rename(Year = "tax_year")
+  daf_agg$Year <- as.integer(daf_agg$Year)
 
-  out$Year <- as.integer(out$Year)
-  out$`Has DAF` <- as.integer(out$`Has DAF`)
+  out <- dplyr::left_join(nn, daf_agg, by = c(.DAF_DIMS, "Year"))
+  out$`Has DAF` <- dplyr::coalesce(as.integer(out$`Has DAF`), 0L)
+  # Dollar metrics and Number of DAFs stay NA for cells with no DAF activity
+  # — don't fabricate $0 when the org didn't file.
+
   out[, c(.DAF_DIMS, "Year",
+          "Number of Nonprofits",
           "Number of DAFs", "Total Contributions",
           "Total Grants", "Total Value", "Has DAF")]
 }

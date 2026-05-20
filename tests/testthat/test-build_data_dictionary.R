@@ -24,6 +24,7 @@ test_that("build_data_dictionary covers every column in every panel", {
     `pf_grants.parquet` = .dd_make_panel(list(Year = 2020L,
                                               `Total Contributions` = 500)),
     `daf.parquet` = .dd_make_panel(list(Year = 2020L,
+                                        `Number of Nonprofits` = 1L,
                                         `Number of DAFs` = 1,
                                         `Total Contributions` = 100,
                                         `Total Grants` = 50,
