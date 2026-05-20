@@ -30,8 +30,10 @@ publish_vintage <- function(outputs, config, sandbox = TRUE, dry_run = FALSE) {
 
   # Manifest.
   inputs <- list(
-    bmf             = config$inputs$bmf,
-    core_harmonized = config$inputs$core_harmonized
+    bmf         = config$inputs$bmf,
+    core_legacy = config$inputs$core_legacy,
+    core_modern = config$inputs$core_modern,
+    core_pf     = config$inputs$core_pf
   )
   manifest <- build_manifest(config$vintage, outputs_meta, inputs,
                              aws_profile = config$aws$profile)

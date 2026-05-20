@@ -41,10 +41,11 @@ years_990 <- seq.int(nn_range[1], nn_range[2])
 core_dir  <- file.path(cache, "core")
 dir.create(core_dir, recursive = TRUE, showWarnings = FALSE)
 
-core_paths_990 <- core_paths(cfg, "990combined", years_990)
-core_paths_pf  <- core_paths(cfg, "990pf",       years_990)
+core_990_uri_tbl <- core_990_paths(cfg, years_990)
+core_pf_uris     <- core_pf_paths(cfg, years_990)
 
 materialize <- function(uri) {
+  if (is.na(uri)) return(NA_character_)
   local <- file.path(core_dir, basename(uri))
   if (file.exists(local)) return(local)
   status <- system2("aws", c("s3", "cp", uri, local,
@@ -54,23 +55,36 @@ materialize <- function(uri) {
   local
 }
 
-message("Downloading CORE 990combined (", length(years_990), " years) ...")
-local_990 <- vapply(core_paths_990, materialize, character(1))
+message("Downloading CORE 990combined (", nrow(core_990_uri_tbl), " years) ...")
+core_990_uri_tbl$combined_local <- vapply(core_990_uri_tbl$combined_uri,
+                                          materialize, character(1))
+message("Downloading CORE 990 (modern, for Pt IX) ...")
+core_990_uri_tbl$full_local     <- vapply(core_990_uri_tbl$full_uri,
+                                          materialize, character(1))
 message("Downloading CORE 990pf ...")
-local_pf  <- vapply(core_paths_pf,  materialize, character(1))
+local_pf <- vapply(core_pf_uris, materialize, character(1))
 
-missing_990 <- names(local_990)[is.na(local_990)]
+missing_990 <- core_990_uri_tbl$year[is.na(core_990_uri_tbl$combined_local)]
 missing_pf  <- names(local_pf)[is.na(local_pf)]
 if (length(missing_990) > 0)
   message("  CORE 990combined missing for: ", paste(missing_990, collapse = ", "))
 if (length(missing_pf) > 0)
   message("  CORE 990pf missing for: ",       paste(missing_pf, collapse = ", "))
 
-local_990 <- local_990[!is.na(local_990)]
-local_pf  <- local_pf[!is.na(local_pf)]
+core_990_uri_tbl <- core_990_uri_tbl[!is.na(core_990_uri_tbl$combined_local), , drop = FALSE]
+local_pf <- local_pf[!is.na(local_pf)]
 
-core_990 <- dplyr::bind_rows(lapply(local_990, read_core_990combined))
-core_pf  <- dplyr::bind_rows(lapply(local_pf,  read_core_990pf))
+core_990 <- dplyr::bind_rows(lapply(seq_len(nrow(core_990_uri_tbl)), function(i) {
+  row <- core_990_uri_tbl[i, ]
+  full_local <- if (!is.na(row$full_local)) row$full_local else NULL
+  read_core_990_year(row$year, row$combined_local, full_local)
+}))
+core_pf_raw <- dplyr::bind_rows(lapply(local_pf, read_core_990pf_raw))
+core_pf     <- core_pf_raw[, intersect(names(core_pf_raw),
+                                       c("ein","tax_year","source_form",
+                                         "total_revenue","total_expenses",
+                                         "total_assets","total_contributions",
+                                         "total_benefits"))]
 message("CORE 990 rows: ", format(nrow(core_990), big.mark = ","),
         "  |  CORE PF rows: ", format(nrow(core_pf), big.mark = ","))
 
@@ -81,6 +95,41 @@ org_metadata <- build_org_metadata(bmf, core_990 = core_990, core_990pf = core_p
 panels <- list()
 panels$number_nonprofits <- build_number_nonprofits(org_metadata, years_990)
 message("number_nonprofits rows: ", format(nrow(panels$number_nonprofits), big.mark = ","))
+
+fin_range  <- cfg$year_ranges$finances
+years_fin  <- seq.int(fin_range[1], fin_range[2])
+panels$finances <- build_finances(core_990, core_pf, org_metadata, years_fin)
+message("finances rows: ", format(nrow(panels$finances), big.mark = ","))
+
+pfg_range  <- cfg$year_ranges$pf_grants
+years_pfg  <- seq.int(pfg_range[1], pfg_range[2])
+panels$pf_grants <- build_pf_grants(core_pf_raw, org_metadata, years_pfg)
+message("pf_grants rows: ", format(nrow(panels$pf_grants), big.mark = ","))
+
+# ---- 4c. DAF ----------------------------------------------------------------
+daf_dir <- file.path(cache, "daf")
+dir.create(daf_dir, recursive = TRUE, showWarnings = FALSE)
+daf_url_tbl <- daf_paths(cfg)
+
+materialize_url <- function(url) {
+  local <- file.path(daf_dir, basename(url))
+  if (file.exists(local)) return(local)
+  status <- utils::download.file(url, local, mode = "wb", quiet = TRUE)
+  if (status != 0) return(NA_character_)
+  local
+}
+
+message("Downloading DAF orgs (", nrow(daf_url_tbl), " years) ...")
+daf_url_tbl$orgs_local <- vapply(daf_url_tbl$orgs_url, materialize_url, character(1))
+daf_url_tbl <- daf_url_tbl[!is.na(daf_url_tbl$orgs_local), , drop = FALSE]
+daf <- read_daf(tibble::tibble(tax_year = daf_url_tbl$tax_year,
+                               orgs_url = daf_url_tbl$orgs_local))
+message("DAF rows: ", format(nrow(daf), big.mark = ","))
+
+daf_range <- cfg$year_ranges$daf
+years_daf <- seq.int(daf_range[1], daf_range[2])
+panels$daf <- build_daf(daf, org_metadata, years_daf)
+message("daf rows: ", format(nrow(panels$daf), big.mark = ","))
 
 # ---- 5. Publish -------------------------------------------------------------
 publish_vintage(panels, cfg, sandbox = !to_prod, dry_run = dry_run)

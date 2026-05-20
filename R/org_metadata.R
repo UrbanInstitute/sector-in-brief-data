@@ -10,8 +10,8 @@
 #' EIN cohort across every panel.
 #'
 #' @param bmf tibble from [read_bmf].
-#' @param core_990 tibble from [read_core] (one or more years of 990combined),
-#'   or NULL to skip the 990 contribution.
+#' @param core_990 tibble from [read_core_990_year] (one or more years of
+#'   990combined, stacked), or NULL to skip the 990 contribution.
 #' @param core_990pf tibble from [read_core_990pf] (one or more years), or
 #'   NULL to skip the 990PF contribution.
 #' @return tibble = bmf columns + `Size` (int32 0–6).
