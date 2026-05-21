@@ -30,6 +30,59 @@ expenses), `Census Region`, `Census State`, `Census County`,
 `Metro/Micro Area`, plus `Year` where temporal. Aggregate grain only — no
 EIN-level rows in output.
 
+## Running on a fresh machine (EC2, etc.)
+
+The pipeline is self-contained — no manual data wrangling, no committed
+inputs. A clean machine needs R 4.3+, the AWS CLI, a few OS-level dev
+libraries (so `arrow` and the GitHub-installed `nccsdata` build cleanly),
+and an AWS profile that can read the source buckets and write
+`s3://nccsdata/sector-in-brief*`.
+
+Tested on Ubuntu 24.04 (matches the GitHub Actions runner). For Amazon
+Linux 2023 substitute `dnf` for `apt` and the equivalent `-devel` package
+names.
+
+```bash
+# 1. System packages
+sudo apt-get update
+sudo apt-get install -y \
+    r-base r-base-dev \
+    libssl-dev libxml2-dev libcurl4-openssl-dev libgit2-dev \
+    libfontconfig1-dev libharfbuzz-dev libfribidi-dev \
+    libfreetype6-dev libpng-dev libtiff5-dev libjpeg-dev \
+    awscli git
+
+# 2. AWS credentials — the pipeline uses profile `thiya`.
+#    Either drop credentials in ~/.aws/credentials:
+#      [thiya]
+#      aws_access_key_id     = ...
+#      aws_secret_access_key = ...
+#      region                = us-east-1
+#    or attach an IAM role with equivalent S3 permissions and edit
+#    config.yml's aws.profile to match (e.g. "default").
+
+# 3. Clone the repo
+git clone https://github.com/UrbanInstitute/sector-in-brief-data.git
+cd sector-in-brief-data
+
+# 4. Install R dependencies (resolves CRAN imports + the GitHub-hosted
+#    `nccsdata` listed under Remotes). First run takes ~10-15 min on a
+#    cold machine because arrow compiles from source.
+Rscript -e 'install.packages("remotes", repos = "https://cloud.r-project.org"); remotes::install_deps(dependencies = TRUE, upgrade = "never")'
+
+# 5. Smoke-test the package
+Rscript -e 'devtools::test()'
+
+# 6. Publish a vintage (bump config.yml's `vintage:` first if needed)
+Rscript pipeline/run.R --prod
+```
+
+EC2 sizing: the pipeline is I/O- and memory-bound, not CPU-bound. An
+`m6i.large` (2 vCPU, 8 GB) handles a full run; bump RAM if you see
+allocation errors on the BMF + CORE joins. Running on EC2 also removes
+the bandwidth bottleneck that makes a local laptop run take 30-60 min;
+expect under 15 min in the same VPC region as the source S3 buckets.
+
 ## Running the pipeline
 
 From the repo root:
