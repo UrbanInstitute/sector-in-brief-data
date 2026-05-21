@@ -14,8 +14,10 @@ test_that("read_bmf normalizes empty-string geo cells to NA", {
   )
   arrow::write_parquet(df, tmp)
 
-  crosswalk <- testthat::test_path("..", "..", "inst", "lookups",
-                                   "cbsa_crosswalk.parquet")
+  crosswalk <- system.file("lookups", "cbsa_crosswalk.parquet",
+                           package = "sectorinbriefdata")
+  skip_if(!nzchar(crosswalk) || !file.exists(crosswalk),
+          "cbsa_crosswalk.parquet not found in installed package")
   out <- read_bmf(tmp, cbsa_crosswalk = crosswalk)
   expect_equal(out$`Census State`,
                c("NY", NA_character_, NA_character_, NA_character_))

@@ -1,5 +1,9 @@
 test_that("read_config parses the repo config.yml", {
-  cfg <- read_config(testthat::test_path("..", "..", "config.yml"))
+  # Only resolvable in the dev tree; under R CMD check the package is
+  # built+installed without config.yml, which is pipeline config, not pkg data.
+  cfg_path <- testthat::test_path("..", "..", "config.yml")
+  skip_if_not(file.exists(cfg_path), "config.yml not in installed pkg tree")
+  cfg <- read_config(cfg_path)
   expect_type(cfg, "list")
   expect_match(cfg$vintage, "^\\d{4}\\.\\d{2}$")
   expect_match(cfg$inputs$bmf, "^s3://")
