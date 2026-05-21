@@ -4,11 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-This repo is a **green-field bootstrap**. Only `NEW_REPO_BOOTSTRAP.md`, `README.md`, and `LICENSE` exist. The R package scaffold (DESCRIPTION, NAMESPACE, `R/`, `tests/`, `pipeline/run.R`, `config.yml`, `inst/`, GitHub workflows) has **not been created yet**. Read `NEW_REPO_BOOTSTRAP.md` end-to-end before any non-trivial work — it is the spec, not background reading.
+Scaffold + Phase 4 are landed. First production vintage `v2026.05` shipped 2026-05-21 to `s3://nccsdata/sector-in-brief/v2026.05/` with a `latest/` mirror, and the dashboard cut over. The predecessor repo `UrbanInstitute/nccs-dataexplorer-data` is archived.
+
+For the canonical, post-cutover data model (inputs, outputs, scope), use the project-data-model memory record — it supersedes `NEW_REPO_BOOTSTRAP.md` on several points (notably gov_grants is out of scope, not deferred). BOOTSTRAP is historical.
 
 ## What this repo does
 
-Producer of the parquet artifact consumed by the `UrbanInstitute/sector-in-brief` Shiny dashboard. Reads canonical NCCS BMF + core + IRS SOI 990-PF + DAF e-file inputs from S3, applies per-panel aggregations, and publishes vintage-tagged parquet to `s3://nccsdata/sector-in-brief/vYYYY.MM/`. Replaces (and will archive) `UrbanInstitute/nccs-dataexplorer-data`.
+Producer of the parquet artifact consumed by the `UrbanInstitute/sector-in-brief` Shiny dashboard. Reads canonical NCCS BMF + CORE 990/990EZ + 990-PF + DAF e-file inputs from S3, applies per-panel aggregations, and publishes vintage-tagged parquet to `s3://nccsdata/sector-in-brief/vYYYY.MM/` (with a `latest/` server-side mirror).
 
 **Aggregate-grain only.** No `EIN2` columns in output. Org-grain / API-side outputs are out of scope (see ADR 0008).
 
@@ -21,7 +23,7 @@ Authoritative sources that constrain this repo's behavior — consult before des
 3. `../nccs-contracts/contracts/bmf-master-geocoded.yml` — BMF input contract.
 4. `../nccs-contracts/decisions/0011-decouple-dashboard-from-committed-data.md` — what the dashboard does once we publish.
 5. `../sector-in-brief/R/options_nogeo.R` and `../sector-in-brief/R/data_server_args.R` — prior dashboard string conventions (`Asset Size`, `Census CBSA`, `Tax Year`). **No longer authoritative** — see "Output naming" below. The dashboard updates to the cleaner names emitted by this repo, not the other way around.
-6. `../nccs-dataexplorer-data/` (archived after parity) — prior implementation; lift business logic, leave the structure.
+6. `../nccs-dataexplorer-data/` (archived 2026-05-21) — prior implementation; historical reference only.
 
 ## Output naming (authoritative)
 
@@ -34,7 +36,7 @@ This repo's panel output column names are the contract. The dashboard conforms. 
 
 `R/data_dictionary_curation.R` carries the per-(file, column) descriptions; `build_data_dictionary()` fails loudly if a panel column lacks a description or a curated entry has gone stale.
 
-## Architecture (target — not yet implemented)
+## Architecture
 
 Single-direction data flow:
 
@@ -58,14 +60,15 @@ Key invariants:
 3. No vendored C++ (no `rapidxml-1.13/`). Fast XML paths need an ADR first.
 4. No scratch/spike scripts in `R/` — branches or gists only.
 5. Schema discipline: one canonical name and type per concept across all files; data dictionary derived from actual schemas, not hand-maintained.
-6. `gov_grants` and `pf_pri` must ship at **aggregate grain** (old pipeline left them org-grain or unwired).
-7. **Size derivation** has a known inconsistency: old code keyed off `F990_TOTAL_ASSETS_RECENT`, dashboard's `options_nogeo.R` documents expense-based bands. Confirm with the contract before locking it in.
+6. `pf_pri` is deferred (source pending nccs-efile 990-PF); `gov_grants` is out of scope per the data-model memory — don't reintroduce them without explicit user approval.
+7. **Size derivation** is locked to total **expenses** (not assets, despite the old dashboard's `Asset Size` label). See "Output naming".
 
 ## Working with S3
 
 - AWS profile: `thiya`. Use `--profile thiya` for all `aws` CLI calls.
-- Output bucket/prefix: `s3://nccsdata/sector-in-brief/v{vintage}/` (+ optional server-side copy to `latest/`).
-- Before the first vintage publish, do the prefix migration in `NEW_REPO_BOOTSTRAP.md` §"S3 prefix migration" — **confirm with the user before any S3 delete**.
+- Output bucket/prefix: `s3://nccsdata/sector-in-brief/v{vintage}/` plus `s3://nccsdata/sector-in-brief/latest/` (auto server-side mirror when `output.also_publish_latest: true`, prod only).
+- Sandbox prefix: `s3://nccsdata/sector-in-brief-sandbox/v{vintage}/` (used by `Rscript pipeline/run.R` without `--prod`).
+- The 2026-05-21 prefix migration is done — pre-cutover contents live under `s3://nccs-data-archive/superseded/`. Any future destructive S3 operation still needs explicit user confirmation.
 
 ## Clone hygiene
 
@@ -82,12 +85,12 @@ The old repo was 51 commits behind with a CRLF stain that looked like real chang
 
 ## Commands
 
-The R package toolchain is not yet scaffolded. Once it exists, expected commands (from `NEW_REPO_BOOTSTRAP.md` §"First-session task list"):
+Run from the repo root.
 
-- Scaffold: `Rscript -e 'usethis::create_package(".")'`, then `usethis::use_testthat()`, `usethis::use_github_actions("check-standard")`.
-- Tests: `Rscript -e 'devtools::test()'` (all) or `Rscript -e 'testthat::test_file("tests/testthat/test-derive_dimensions.R")'` (single file).
-- Check: `Rscript -e 'devtools::check()'` (also runs in CI via `.github/workflows/R-CMD-check.yml`).
-- Run the full pipeline: `Rscript pipeline/run.R` from the repo root.
-- Publish a vintage: manual-trigger `publish.yml` workflow (after bumping `vintage:` in `config.yml`).
+- Tests: `Rscript -e 'devtools::test()'` (all) or `Rscript -e 'testthat::test_file("tests/testthat/test-<name>.R")'` (single file). CI runs the same via `.github/workflows/R-CMD-check.yml`.
+- Check: `Rscript -e 'devtools::check()'`.
+- Full pipeline → sandbox: `Rscript pipeline/run.R` → `s3://nccsdata/sector-in-brief-sandbox/v{vintage}/`.
+- Full pipeline → prod: `Rscript pipeline/run.R --prod` → `s3://nccsdata/sector-in-brief/v{vintage}/` and (if config flag set) mirror to `latest/`. Bump `vintage:` in `config.yml` before publishing a new one.
+- Stage locally without uploading: `Rscript pipeline/run.R --dry-run`.
 
-Verify these exactly once the scaffold lands; update this section if they differ.
+**Environment quirk**: in WSL2 the system R doesn't include `/usr/local/lib/R/site-library` on its default path, so `library(arrow)` fails. Either `export R_LIBS_SITE=/usr/local/lib/R/site-library` or invoke with the prefix.
