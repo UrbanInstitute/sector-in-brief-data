@@ -54,9 +54,16 @@ publish_vintage <- function(outputs, config, sandbox = TRUE, dry_run = FALSE) {
 
   # Upload (or dry-run).
   prefix <- vintage_prefix(config, sandbox = sandbox)
+  latest_prefix <- if (!sandbox && isTRUE(config$output$also_publish_latest))
+    sprintf("s3://%s/%s/latest/", config$output$bucket, config$output$prefix)
+  else NULL
+
   if (dry_run) {
     message("DRY-RUN: would upload ", stage, " → ", prefix)
+    if (!is.null(latest_prefix))
+      message("DRY-RUN: would mirror ", prefix, " → ", latest_prefix)
     return(invisible(list(stage_dir = stage, s3_prefix = prefix,
+                          latest_prefix = latest_prefix,
                           manifest = manifest)))
   }
   args <- c("s3", "cp", stage, prefix, "--recursive",
@@ -66,7 +73,17 @@ publish_vintage <- function(outputs, config, sandbox = TRUE, dry_run = FALSE) {
   if (status != 0) stop("aws s3 cp failed with exit code ", status,
                         call. = FALSE)
 
-  invisible(list(stage_dir = stage, s3_prefix = prefix, manifest = manifest))
+  if (!is.null(latest_prefix)) {
+    message("Mirroring ", prefix, " → ", latest_prefix)
+    mirror_args <- c("s3", "cp", prefix, latest_prefix, "--recursive",
+                     "--profile", config$aws$profile)
+    status <- system2("aws", mirror_args)
+    if (status != 0) stop("aws s3 cp (latest mirror) failed with exit code ",
+                          status, call. = FALSE)
+  }
+
+  invisible(list(stage_dir = stage, s3_prefix = prefix,
+                 latest_prefix = latest_prefix, manifest = manifest))
 }
 
 `%||%` <- function(a, b) if (is.null(a)) b else a
