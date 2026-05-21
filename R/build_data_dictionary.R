@@ -97,7 +97,7 @@ build_data_dictionary <- function(panels) {
     if ("Year" %in% names(df) && nrow(df) > 0) {
       yr <- as.integer(df$Year)
       yr <- yr[!is.na(yr)]
-      if (length(yr)) sprintf("%d–%d", min(yr), max(yr)) else "static"
+      if (length(yr)) sprintf("%d-%d", min(yr), max(yr)) else "static"
     } else "static"
   }, character(1))
   coverage_lookup <- tibble::tibble(file = names(panels), coverage = coverage)

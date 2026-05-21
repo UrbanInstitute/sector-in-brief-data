@@ -85,6 +85,6 @@ test_that("build_data_dictionary computes per-file year coverage from data", {
   dd <- build_data_dictionary(panels)
   fin_cov <- unique(dd$coverage[dd$file == "finances.parquet"])
   ng_cov  <- unique(dd$coverage[dd$file == "nested_geographies.csv"])
-  expect_equal(fin_cov, "2010–2024")
+  expect_equal(fin_cov, "2010-2024")
   expect_equal(ng_cov, "static")
 })

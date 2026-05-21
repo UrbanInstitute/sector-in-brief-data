@@ -59,22 +59,22 @@ publish_vintage <- function(outputs, config, sandbox = TRUE, dry_run = FALSE) {
   else NULL
 
   if (dry_run) {
-    message("DRY-RUN: would upload ", stage, " → ", prefix)
+    message("DRY-RUN: would upload ", stage, " -> ", prefix)
     if (!is.null(latest_prefix))
-      message("DRY-RUN: would mirror ", prefix, " → ", latest_prefix)
+      message("DRY-RUN: would mirror ", prefix, " -> ", latest_prefix)
     return(invisible(list(stage_dir = stage, s3_prefix = prefix,
                           latest_prefix = latest_prefix,
                           manifest = manifest)))
   }
   args <- c("s3", "cp", stage, prefix, "--recursive",
             "--profile", config$aws$profile)
-  message("Uploading ", stage, " → ", prefix)
+  message("Uploading ", stage, " -> ", prefix)
   status <- system2("aws", args)
   if (status != 0) stop("aws s3 cp failed with exit code ", status,
                         call. = FALSE)
 
   if (!is.null(latest_prefix)) {
-    message("Mirroring ", prefix, " → ", latest_prefix)
+    message("Mirroring ", prefix, " -> ", latest_prefix)
     mirror_args <- c("s3", "cp", prefix, latest_prefix, "--recursive",
                      "--profile", config$aws$profile)
     status <- system2("aws", mirror_args)
