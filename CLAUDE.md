@@ -6,7 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Scaffold + Phase 4 are landed. First production vintage `v2026.05` shipped 2026-05-21 to `s3://nccsdata/sector-in-brief/v2026.05/` with a `latest/` mirror, and the dashboard cut over. The predecessor repo `UrbanInstitute/nccs-dataexplorer-data` is archived.
 
-For the canonical, post-cutover data model (inputs, outputs, scope), use the project-data-model memory record — it supersedes `NEW_REPO_BOOTSTRAP.md` on several points (notably gov_grants is out of scope, not deferred). BOOTSTRAP is historical.
+Two more panels — `gov_grants` and `pf_pri` — are built and verified against live data (branch `feat/gov-grants-pf-pri-panels`, 2026-05-29) but **not yet published to a vintage**. They source the efile Phase 0 slice (`s3://nccsdata/processed/efile/phase0/latest/`), which went live 2026-05-29. Both cover **2021–2023 only** (e-file is complete from 2021; 2024 filings are still arriving). Publishing them needs a vintage bump past the frozen `v2026.05`.
+
+For the canonical, post-cutover data model (inputs, outputs, scope), use the project-data-model memory record. BOOTSTRAP is historical.
 
 ## What this repo does
 
@@ -60,7 +62,7 @@ Key invariants:
 3. No vendored C++ (no `rapidxml-1.13/`). Fast XML paths need an ADR first.
 4. No scratch/spike scripts in `R/` — branches or gists only.
 5. Schema discipline: one canonical name and type per concept across all files; data dictionary derived from actual schemas, not hand-maintained.
-6. `pf_pri` is deferred (source pending nccs-efile 990-PF); `gov_grants` is out of scope per the data-model memory — don't reintroduce them without explicit user approval.
+6. `gov_grants` and `pf_pri` are now **in scope** (user-approved 2026-05-29) and built off the efile Phase 0 slice — superseding the prior "out of scope / deferred" stance. `gov_grants` = Form 990 Pt VIII line 1e (grants **received**, NOT Schedule I grants paid to governments); `pf_pri` = Form 990-PF Pt IX-B aggregate. Both publish 2021–2023 only. Do not source either from the GivingTuesday Data Mart (the archived dataexplorer-data drafts did — efile is the canonical source now).
 7. **Size derivation** is locked to total **expenses** (not assets, despite the old dashboard's `Asset Size` label). See "Output naming".
 
 ## Working with S3
