@@ -41,12 +41,16 @@ year_ranges:
   number_nonprofits: [1989, 2026]
   finances:          [1989, 2024]
   pf_grants:         [1989, 2024]
-  # efile Phase 0 sources. Upstream spans TY2020-2024, but we publish only the
-  # complete years: e-file is complete from 2021, and 2024 has too few records
-  # released yet. Revisit the upper bound when 2024 filings finish arriving.
+  # efile-derived panels (gov_grants, pf_pri, daf). Completeness rule:
+  #   - Start year is always 2021 (e-file coverage is complete from 2021 on).
+  #   - Upper bound is the most recent tax year whose record count is within
+  #     +/-5% of the prior year's. nccs-efile publishes everything available;
+  #     this consumer trims to the years that are complete enough for the
+  #     dashboard. Re-evaluate at each vintage (e.g. 2024 currently has far
+  #     fewer records than 2023, so it is excluded).
   gov_grants:        [2021, 2023]
   pf_pri:            [2021, 2023]
-  daf:               [2020, 2024]
+  daf:               [2021, 2023]
 
 lookups:
   cbsa_crosswalk: "inst/lookups/cbsa_crosswalk.parquet"
