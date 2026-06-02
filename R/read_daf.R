@@ -53,21 +53,20 @@ read_daf_orgs <- function(path, tax_year) {
 
 #' Build the per-year DAF source URLs from config
 #'
-#' Returns a tibble with `tax_year`, `orgs_url`, `assets_url`. Iterates over
-#' the keys in `config$inputs$daf$orgs` — years missing from the config (or
-#' missing one of the two URLs) are skipped.
+#' Returns a tibble with `tax_year` and `orgs_url`, one row per year present in
+#' `config$inputs$daf$orgs`. The Schedule D "orgs" extract is the only DAF
+#' source consumed (the F9-P10 balance-sheet family was never read and was
+#' removed 2026-05-30).
 #'
 #' @param config list from [read_config].
-#' @return tibble.
+#' @return tibble with `tax_year`, `orgs_url`.
 #' @export
 daf_paths <- function(config) {
-  orgs   <- config$inputs$daf$orgs
-  assets <- config$inputs$daf$assets
-  years  <- intersect(names(orgs), names(assets))
+  orgs  <- config$inputs$daf$orgs
+  years <- names(orgs)
   tibble::tibble(
-    tax_year   = as.integer(years),
-    orgs_url   = unlist(orgs[years],   use.names = FALSE),
-    assets_url = unlist(assets[years], use.names = FALSE)
+    tax_year = as.integer(years),
+    orgs_url = unlist(orgs[years], use.names = FALSE)
   )
 }
 

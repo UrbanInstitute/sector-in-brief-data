@@ -25,11 +25,6 @@ inputs:
       2022: "https://nccs-efile.s3.us-east-1.amazonaws.com/public/efile_v2_1/SD-P01-T00-ORGS-DONOR-ADVISED-FUNDS-OTH-2022.CSV"
       2023: "https://nccs-efile.s3.us-east-1.amazonaws.com/public/efile_v2_1/SD-P01-T00-ORGS-DONOR-ADVISED-FUNDS-OTH-2023.CSV"
       2024: "https://nccs-efile.s3.us-east-1.amazonaws.com/public/efile_v2_1/SD-P01-T00-ORGS-DONOR-ADVISED-FUNDS-OTH-2024.CSV"
-    assets:
-      2021: "https://nccs-efile.s3.us-east-1.amazonaws.com/public/efile_v2_1/F9-P10-T00-BALANCE-SHEET-2021.CSV"
-      2022: "https://nccs-efile.s3.us-east-1.amazonaws.com/public/efile_v2_1/F9-P10-T00-BALANCE-SHEET-2022.CSV"
-      2023: "https://nccs-efile.s3.us-east-1.amazonaws.com/public/efile_v2_1/F9-P10-T00-BALANCE-SHEET-2023.CSV"
-      2024: "https://nccs-efile.s3.us-east-1.amazonaws.com/public/efile_v2_1/F9-P10-T00-BALANCE-SHEET-2024.CSV"
 
 output:
   bucket: "nccsdata"
