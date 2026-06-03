@@ -39,13 +39,12 @@ test_that("read_daf_orgs filters to the requested tax_year", {
   expect_equal(out$ein, nccsdata::nccs_normalize_ein("A"))
 })
 
-test_that("daf_paths intersects orgs/assets keys and returns absolute URLs", {
+test_that("daf_paths returns one row per orgs year with absolute URLs", {
   cfg <- list(inputs = list(daf = list(
-    orgs   = list(`2022` = "u1", `2023` = "u2"),
-    assets = list(`2022` = "a1", `2023` = "a2", `2024` = "a3")
+    orgs = list(`2022` = "u1", `2023` = "u2")
   )))
   out <- daf_paths(cfg)
-  expect_equal(out$tax_year,   c(2022L, 2023L))
-  expect_equal(out$orgs_url,   c("u1", "u2"))
-  expect_equal(out$assets_url, c("a1", "a2"))
+  expect_equal(names(out), c("tax_year", "orgs_url"))
+  expect_equal(out$tax_year, c(2022L, 2023L))
+  expect_equal(out$orgs_url, c("u1", "u2"))
 })

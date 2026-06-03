@@ -44,9 +44,9 @@ dir.create(core_dir, recursive = TRUE, showWarnings = FALSE)
 core_990_uri_tbl <- core_990_paths(cfg, years_990)
 core_pf_uris     <- core_pf_paths(cfg, years_990)
 
-materialize <- function(uri) {
+materialize <- function(uri, dest_dir = core_dir) {
   if (is.na(uri)) return(NA_character_)
-  local <- file.path(core_dir, basename(uri))
+  local <- file.path(dest_dir, basename(uri))
   if (file.exists(local)) return(local)
   status <- system2("aws", c("s3", "cp", uri, local,
                              "--profile", cfg$aws$profile),
@@ -105,6 +105,39 @@ pfg_range  <- cfg$year_ranges$pf_grants
 years_pfg  <- seq.int(pfg_range[1], pfg_range[2])
 panels$pf_grants <- build_pf_grants(core_pf_raw, org_metadata, years_pfg)
 message("pf_grants rows: ", format(nrow(panels$pf_grants), big.mark = ","))
+
+# ---- 4b. efile panels (government_grants, program_related_investments) ------
+# Two filing-grain metric tables from the efile Phase 0 slice (phase0/latest).
+efile_dir <- file.path(cache, "efile")
+dir.create(efile_dir, recursive = TRUE, showWarnings = FALSE)
+
+gg_local  <- materialize(cfg$inputs$efile$government_grants, efile_dir)
+pri_local <- materialize(cfg$inputs$efile$program_related_investments, efile_dir)
+
+gg_range  <- cfg$year_ranges$government_grants
+years_gg  <- seq.int(gg_range[1], gg_range[2])
+if (!is.na(gg_local)) {
+  gov_grants_raw <- read_government_grants_raw(gg_local)
+  panels$government_grants <-
+    build_government_grants(gov_grants_raw, org_metadata, years_gg)
+  message("government_grants rows: ",
+          format(nrow(panels$government_grants), big.mark = ","))
+} else {
+  message("  efile government_grants missing — skipping government_grants panel")
+}
+
+pri_range <- cfg$year_ranges$program_related_investments
+years_pri <- seq.int(pri_range[1], pri_range[2])
+if (!is.na(pri_local)) {
+  pf_pri_raw <- read_program_related_investments_raw(pri_local)
+  panels$program_related_investments <-
+    build_program_related_investments(pf_pri_raw, org_metadata, years_pri)
+  message("program_related_investments rows: ",
+          format(nrow(panels$program_related_investments), big.mark = ","))
+} else {
+  message("  efile program_related_investments missing — ",
+          "skipping program_related_investments panel")
+}
 
 # ---- 4c. DAF ----------------------------------------------------------------
 daf_dir <- file.path(cache, "daf")

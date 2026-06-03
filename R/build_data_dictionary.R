@@ -3,6 +3,8 @@
 .DD_FILES_WITH_SHARED_DIMS <- c("number_nonprofits.parquet",
                                 "finances.parquet",
                                 "pf_grants.parquet",
+                                "government_grants.parquet",
+                                "program_related_investments.parquet",
                                 "daf.parquet")
 
 .DD_COLUMNS <- c("file", "column", "datatype",
