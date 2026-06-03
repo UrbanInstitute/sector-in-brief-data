@@ -32,7 +32,27 @@ if (!file.exists(bmf_local)) {
   system2("aws", c("s3", "cp", cfg$inputs$bmf, bmf_local,
                    "--profile", cfg$aws$profile), stdout = FALSE)
 }
-bmf <- read_bmf(bmf_local)
+# County FIPS crosswalk (nccs-data-bmf) — optional. When present it canonicalizes
+# the county dimension across every output; when absent, labels pass through.
+county_xw <- NULL
+xw_uri <- cfg$inputs$county_crosswalk
+if (!is.null(xw_uri)) {
+  xw_local <- file.path(cache, basename(xw_uri))
+  if (!file.exists(xw_local)) {
+    message("Downloading county crosswalk ...")
+    system2("aws", c("s3", "cp", xw_uri, xw_local,
+                     "--profile", cfg$aws$profile), stdout = FALSE, stderr = FALSE)
+  }
+  if (file.exists(xw_local)) {
+    county_xw <- read_county_crosswalk(xw_local)
+    message("county crosswalk rows: ", format(nrow(county_xw), big.mark = ","))
+  } else {
+    message("  county crosswalk unavailable (", xw_uri,
+            ") — skipping county canonicalization")
+  }
+}
+
+bmf <- read_bmf(bmf_local, county_crosswalk = county_xw)
 message("BMF rows: ", format(nrow(bmf), big.mark = ","))
 
 # ---- 2. CORE (for static Size) ---------------------------------------------
@@ -169,6 +189,15 @@ panels$nested_geographies <- list(df = build_nested_geographies(bmf),
                                   format = "csv")
 message("nested_geographies rows: ",
         format(nrow(panels$nested_geographies$df), big.mark = ","))
+
+# County FIPS crosswalk artifact (canonical (state, county) -> FIPS), for
+# downstream FIPS-keyed filtering. Only emitted when the upstream crosswalk
+# was available this run.
+if (!is.null(county_xw)) {
+  panels$county_fips_crosswalk <- build_county_crosswalk(county_xw)
+  message("county_fips_crosswalk rows: ",
+          format(nrow(panels$county_fips_crosswalk), big.mark = ","))
+}
 
 # ---- 4e. Data dictionary ----------------------------------------------------
 # Build from the actual schemas + curated descriptions. Lives in the same

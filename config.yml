@@ -2,6 +2,14 @@ vintage: "2026.06"
 
 inputs:
   bmf: "s3://nccsdata/geocoding/bmf-master/merged/bmf_master_geocoded.parquet"
+  # County FIPS crosswalk (produced by nccs-data-bmf via lat/lon -> Census TIGER).
+  # Maps the BMF's dirty free-text geo_county to canonical Census names + FIPS.
+  # Used to canonicalize Census County across all panels + nested_geographies,
+  # and re-published as county_fips_crosswalk.parquet for FIPS-keyed filtering.
+  # OPTIONAL: when the object is absent the pipeline passes county labels through
+  # unchanged and does not emit the crosswalk artifact. PATH PENDING upstream
+  # publish — confirm with nccs-data-bmf.
+  county_crosswalk: "s3://nccsdata/geocoding/bmf-master/crosswalks/county_fips_crosswalk.parquet"
   # 990combined for 1989-2011 (only file available); carries Pt IX 5+7 inline.
   core_legacy: "s3://nccsdata/processed_legacy/core/"
   # 990combined (intersection 990+990EZ) and 990 (full, with Pt IX 5/6/7/8/9)

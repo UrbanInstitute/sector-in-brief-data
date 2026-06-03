@@ -39,7 +39,8 @@
 #' @export
 read_bmf <- function(path,
                      cbsa_crosswalk = system.file("lookups", "cbsa_crosswalk.parquet",
-                                                  package = "sectorinbriefdata")) {
+                                                  package = "sectorinbriefdata"),
+                     county_crosswalk = NULL) {
   if (!nzchar(cbsa_crosswalk) || !file.exists(cbsa_crosswalk)) {
     # When running pre-install (e.g. during dev tests), fall back to repo path.
     cbsa_crosswalk <- file.path("inst", "lookups", "cbsa_crosswalk.parquet")
@@ -54,6 +55,16 @@ read_bmf <- function(path,
   na_if_blank <- function(x) ifelse(!is.na(x) & nzchar(trimws(x)), x, NA_character_)
   bmf$geo_state_abbr <- na_if_blank(bmf$geo_state_abbr)
   bmf$geo_county     <- na_if_blank(bmf$geo_county)
+
+  # Canonicalize county labels against the published FIPS crosswalk, if supplied.
+  # Done BEFORE the CBSA join so Metro/Micro Area resolves off the clean name too
+  # (a former stray like bare "Wayne" -> "Wayne County" then joins its CBSA).
+  if (!is.null(county_crosswalk)) {
+    xw <- if (is.character(county_crosswalk))
+      read_county_crosswalk(county_crosswalk) else county_crosswalk
+    bmf$geo_county <- canonicalize_county_label(bmf$geo_state_abbr,
+                                                bmf$geo_county, xw)
+  }
 
   # Parse "YYYY-MM" → integer YYYY for org_year_last.
   org_year_last <- suppressWarnings(

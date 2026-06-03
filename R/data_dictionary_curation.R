@@ -56,5 +56,9 @@
   "nested_geographies.csv",    "Census State",        "2-letter USPS state code.",                                                          "BMF.",                                                                                               "",
   "nested_geographies.csv",    "Census County",       "County name.",                                                                        "BMF.",                                                                                               "",
   "nested_geographies.csv",    "Metro/Micro Area",    "OMB CBSA name.",                                                                      "CBSA crosswalk.",                                                                                    "NA for rural counties.",
-  "nested_geographies.csv",    "Census Region",       "US Census region.",                                                                  "Derived from state.",                                                                                ""
+  "nested_geographies.csv",    "Census Region",       "US Census region.",                                                                  "Derived from state.",                                                                                "",
+  # county_fips_crosswalk
+  "county_fips_crosswalk.parquet", "Census State",    "2-letter USPS state code.",                                                          "nccs-data-bmf county FIPS crosswalk.",                                                               "",
+  "county_fips_crosswalk.parquet", "Census County",   "Canonical Census county name (NAMELSAD: County / Parish / Borough / Census Area / Municipality / independent city / Municipio).", "nccs-data-bmf county FIPS crosswalk (resolved from geocoded lat/lon via Census TIGER).", "",
+  "county_fips_crosswalk.parquet", "County FIPS",     "5-character county GEOID (2-char state FIPS + 3-char county FIPS, leading zeros preserved). Stable key for county-level filtering — use this rather than the name, which collides across states.", "nccs-data-bmf county FIPS crosswalk (Census TIGER GEOID).", ""
 )
