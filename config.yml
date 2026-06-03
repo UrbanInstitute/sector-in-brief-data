@@ -1,4 +1,4 @@
-vintage: "2026.05"
+vintage: "2026.06"
 
 inputs:
   bmf: "s3://nccsdata/geocoding/bmf-master/merged/bmf_master_geocoded.parquet"
