@@ -118,8 +118,9 @@ gg_range  <- cfg$year_ranges$gov_grants
 years_gg  <- seq.int(gg_range[1], gg_range[2])
 if (!is.na(gg_local)) {
   gov_grants_raw <- read_gov_grants_raw(gg_local)
-  panels$gov_grants <- build_gov_grants(gov_grants_raw, org_metadata, years_gg)
-  message("gov_grants rows: ", format(nrow(panels$gov_grants), big.mark = ","))
+  panels$government_grants <- build_gov_grants(gov_grants_raw, org_metadata, years_gg)
+  message("government_grants rows: ",
+          format(nrow(panels$government_grants), big.mark = ","))
 } else {
   message("  efile government_grants missing — skipping gov_grants panel")
 }
@@ -128,8 +129,10 @@ pri_range <- cfg$year_ranges$pf_pri
 years_pri <- seq.int(pri_range[1], pri_range[2])
 if (!is.na(pri_local)) {
   pf_pri_raw <- read_pf_pri_raw(pri_local)
-  panels$pf_pri <- build_pf_pri(pf_pri_raw, org_metadata, years_pri)
-  message("pf_pri rows: ", format(nrow(panels$pf_pri), big.mark = ","))
+  panels$program_related_investments <-
+    build_pf_pri(pf_pri_raw, org_metadata, years_pri)
+  message("program_related_investments rows: ",
+          format(nrow(panels$program_related_investments), big.mark = ","))
 } else {
   message("  efile program_related_investments missing — skipping pf_pri panel")
 }
