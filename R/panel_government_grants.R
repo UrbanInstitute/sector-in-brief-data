@@ -4,7 +4,7 @@
 
 .gg_na_sum <- function(x) if (all(is.na(x))) NA_real_ else sum(x, na.rm = TRUE)
 
-#' Build the gov_grants panel
+#' Build the government_grants panel
 #'
 #' Aggregates government grants/contributions **received** (Form 990 Part VIII
 #' line 1e, from the efile Phase 0 `government_grants` table) by (Year,
@@ -15,14 +15,14 @@
 #' NOT re-derived from efile expenses (the archived dataexplorer-data draft did
 #' that — superseded by the locked static-Size model).
 #'
-#' @param gov_grants_raw tibble from [read_gov_grants_raw] (one or more years).
+#' @param gov_grants_raw tibble from [read_government_grants_raw] (one or more years).
 #'   Must carry `ein`, `tax_year`, `government_grants`.
 #' @param org_metadata tibble from [build_org_metadata].
 #' @param years integer vector of tax years to keep.
 #' @return tibble with `.GG_DIMS`, `Year` (int32), `Total Government Grants`
 #'   (double).
 #' @export
-build_gov_grants <- function(gov_grants_raw, org_metadata, years) {
+build_government_grants <- function(gov_grants_raw, org_metadata, years) {
   stopifnot(all(c("ein", .GG_DIMS) %in% names(org_metadata)))
   stopifnot(all(c("ein", "tax_year", "government_grants") %in% names(gov_grants_raw)))
   years <- as.integer(years)

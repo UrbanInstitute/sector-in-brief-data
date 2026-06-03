@@ -4,7 +4,7 @@
 
 .pri_na_sum <- function(x) if (all(is.na(x))) NA_real_ else sum(x, na.rm = TRUE)
 
-#' Build the pf_pri panel
+#' Build the program_related_investments panel
 #'
 #' Aggregates the Form 990-PF Part IX-B program-related-investments total
 #' (from the efile Phase 0 `program_related_investments` table) by (Year,
@@ -14,14 +14,14 @@
 #' GivingTuesday 990-PF Data Mart `SUPRREINTOOT` column; the canonical source
 #' is now the Urban-owned efile slice (ADR 0017).
 #'
-#' @param pf_pri_raw tibble from [read_pf_pri_raw] (one or more years). Must
+#' @param pf_pri_raw tibble from [read_program_related_investments_raw] (one or more years). Must
 #'   carry `ein`, `tax_year`, `program_related_investments_total`.
 #' @param org_metadata tibble from [build_org_metadata].
 #' @param years integer vector of tax years to keep.
 #' @return tibble with `.PRI_DIMS`, `Year` (int32),
 #'   `Total Program-Related Investments` (double).
 #' @export
-build_pf_pri <- function(pf_pri_raw, org_metadata, years) {
+build_program_related_investments <- function(pf_pri_raw, org_metadata, years) {
   stopifnot(all(c("ein", .PRI_DIMS) %in% names(org_metadata)))
   stopifnot(all(c("ein", "tax_year", "program_related_investments_total")
                 %in% names(pf_pri_raw)))

@@ -18,42 +18,42 @@
   )
 }
 
-test_that("build_pf_pri sums PRI totals across EINs in a cell", {
+test_that("build_program_related_investments sums PRI totals across EINs in a cell", {
   pri <- dplyr::bind_rows(.pri_row("A", 2021, 1000), .pri_row("B", 2021, 2500))
-  out <- build_pf_pri(pri, .pri_org(), years = 2021L)
+  out <- build_program_related_investments(pri, .pri_org(), years = 2021L)
   expect_equal(nrow(out), 1L)
   expect_equal(out$`Total Program-Related Investments`, 3500)
 })
 
-test_that("build_pf_pri groups by Year", {
+test_that("build_program_related_investments groups by Year", {
   pri <- dplyr::bind_rows(.pri_row("A", 2021, 100), .pri_row("A", 2022, 200))
-  out <- build_pf_pri(pri, .pri_org("A"), years = c(2021L, 2022L))
+  out <- build_program_related_investments(pri, .pri_org("A"), years = c(2021L, 2022L))
   by_year <- stats::setNames(out$`Total Program-Related Investments`, out$Year)
   expect_equal(by_year[["2021"]], 100)
   expect_equal(by_year[["2022"]], 200)
 })
 
-test_that("build_pf_pri filters years outside the requested range", {
+test_that("build_program_related_investments filters years outside the requested range", {
   pri <- dplyr::bind_rows(.pri_row("A", 2020, 1), .pri_row("A", 2021, 999))
-  out <- build_pf_pri(pri, .pri_org("A"), years = 2021L)
+  out <- build_program_related_investments(pri, .pri_org("A"), years = 2021L)
   expect_equal(unique(out$Year), 2021L)
   expect_equal(out$`Total Program-Related Investments`, 999)
 })
 
-test_that("build_pf_pri preserves NA when every row is NA", {
+test_that("build_program_related_investments preserves NA when every row is NA", {
   pri <- dplyr::bind_rows(.pri_row("A", 2021, NA_real_), .pri_row("B", 2021, NA_real_))
-  out <- build_pf_pri(pri, .pri_org(), years = 2021L)
+  out <- build_program_related_investments(pri, .pri_org(), years = 2021L)
   expect_true(is.na(out$`Total Program-Related Investments`))
 })
 
-test_that("build_pf_pri drops rows whose EIN isn't in org_metadata", {
+test_that("build_program_related_investments drops rows whose EIN isn't in org_metadata", {
   pri <- dplyr::bind_rows(.pri_row("A", 2021, 100), .pri_row("ORPHAN", 2021, 9999))
-  out <- build_pf_pri(pri, .pri_org("A"), years = 2021L)
+  out <- build_program_related_investments(pri, .pri_org("A"), years = 2021L)
   expect_equal(out$`Total Program-Related Investments`, 100)
 })
 
-test_that("build_pf_pri emits the contract schema", {
-  out <- build_pf_pri(.pri_row("A", 2021), .pri_org("A"), years = 2021L)
+test_that("build_program_related_investments emits the contract schema", {
+  out <- build_program_related_investments(.pri_row("A", 2021), .pri_org("A"), years = 2021L)
   expect_equal(colnames(out),
                c("Organization Type", "Subsector", "Size",
                  "Census Region", "Census State", "Census County",

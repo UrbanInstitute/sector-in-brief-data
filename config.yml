@@ -14,10 +14,11 @@ inputs:
   # government_grants = Form 990 Pt VIII line 1e (grants RECEIVED, 990 only);
   # program_related_investments_total = Form 990-PF Pt IX-B aggregate (990-PF
   # only). Reads phase0/latest; coverage TY2020-2024 upstream, but this repo
-  # publishes only the complete years (see year_ranges.gov_grants / pf_pri).
+  # publishes only the complete years (see year_ranges.government_grants /
+  # program_related_investments).
   efile:
-    gov_grants: "s3://nccsdata/processed/efile/phase0/latest/government_grants.parquet"
-    pf_pri:     "s3://nccsdata/processed/efile/phase0/latest/program_related_investments.parquet"
+    government_grants: "s3://nccsdata/processed/efile/phase0/latest/government_grants.parquet"
+    program_related_investments: "s3://nccsdata/processed/efile/phase0/latest/program_related_investments.parquet"
 
   daf:
     orgs:
@@ -36,16 +37,17 @@ year_ranges:
   number_nonprofits: [1989, 2026]
   finances:          [1989, 2024]
   pf_grants:         [1989, 2024]
-  # efile-derived panels (gov_grants, pf_pri, daf). Completeness rule:
+  # efile-derived panels (government_grants, program_related_investments, daf).
+  # Completeness rule:
   #   - Start year is always 2021 (e-file coverage is complete from 2021 on).
   #   - Upper bound is the most recent tax year whose record count is within
   #     +/-5% of the prior year's. nccs-efile publishes everything available;
   #     this consumer trims to the years that are complete enough for the
   #     dashboard. Re-evaluate at each vintage (e.g. 2024 currently has far
   #     fewer records than 2023, so it is excluded).
-  gov_grants:        [2021, 2023]
-  pf_pri:            [2021, 2023]
-  daf:               [2021, 2023]
+  government_grants:           [2021, 2023]
+  program_related_investments: [2021, 2023]
+  daf:                         [2021, 2023]
 
 lookups:
   cbsa_crosswalk: "inst/lookups/cbsa_crosswalk.parquet"
