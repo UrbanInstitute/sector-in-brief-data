@@ -1,7 +1,21 @@
-vintage: "2026.06"
+vintage: "2026.07"
 
 inputs:
   bmf: "s3://nccsdata/geocoding/bmf-master/merged/bmf_master_geocoded.parquet"
+  # County FIPS crosswalk (produced by nccs-data-bmf via lat/lon -> Census TIGER).
+  # Maps the BMF's dirty free-text geo_county to canonical Census names + FIPS +
+  # a `resolution` verdict (resolved / ambiguous / unresolved). Used to
+  # canonicalize Census County across all panels + nested_geographies, attach
+  # County FIPS, and re-publish county_fips_crosswalk.parquet for FIPS-keyed
+  # filtering + audit. OPTIONAL: when absent the pipeline passes county labels
+  # through unchanged and does not emit the crosswalk artifact.
+  county_crosswalk: "s3://nccsdata/crosswalks/county-fips/county_fips_crosswalk.parquet"
+  # CBSA crosswalk (nccs-data-bmf): county FIPS -> OMB Metro/Micro area + CSA.
+  # FIPS-keyed (collision-proof) source for Metro/Micro Area + CBSA Code. Caveat:
+  # DATA-DERIVED (only resolved counties present in our geocoded data, left-joined
+  # to OMB 2023) -- not the full OMB universe; not a dropdown allowlist source.
+  # OPTIONAL: when absent Metro/Micro Area is NA and no cbsa artifact is emitted.
+  cbsa_crosswalk: "s3://nccsdata/crosswalks/cbsa/cbsa_crosswalk.parquet"
   # 990combined for 1989-2011 (only file available); carries Pt IX 5+7 inline.
   core_legacy: "s3://nccsdata/processed_legacy/core/"
   # 990combined (intersection 990+990EZ) and 990 (full, with Pt IX 5/6/7/8/9)
@@ -48,9 +62,6 @@ year_ranges:
   government_grants:           [2021, 2023]
   program_related_investments: [2021, 2023]
   daf:                         [2021, 2023]
-
-lookups:
-  cbsa_crosswalk: "inst/lookups/cbsa_crosswalk.parquet"
 
 aws:
   profile: "thiya"

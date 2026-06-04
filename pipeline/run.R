@@ -32,7 +32,48 @@ if (!file.exists(bmf_local)) {
   system2("aws", c("s3", "cp", cfg$inputs$bmf, bmf_local,
                    "--profile", cfg$aws$profile), stdout = FALSE)
 }
-bmf <- read_bmf(bmf_local)
+# County FIPS crosswalk (nccs-data-bmf) — optional. When present it canonicalizes
+# the county dimension across every output; when absent, labels pass through.
+county_xw <- NULL
+xw_uri <- cfg$inputs$county_crosswalk
+if (!is.null(xw_uri)) {
+  xw_local <- file.path(cache, basename(xw_uri))
+  if (!file.exists(xw_local)) {
+    message("Downloading county crosswalk ...")
+    system2("aws", c("s3", "cp", xw_uri, xw_local,
+                     "--profile", cfg$aws$profile), stdout = FALSE, stderr = FALSE)
+  }
+  if (file.exists(xw_local)) {
+    county_xw <- read_county_crosswalk(xw_local)
+    message("county crosswalk rows: ", format(nrow(county_xw), big.mark = ","))
+  } else {
+    message("  county crosswalk unavailable (", xw_uri,
+            ") — skipping county canonicalization")
+  }
+}
+
+# CBSA crosswalk (nccs-data-bmf) — optional. county FIPS -> OMB Metro/Micro area.
+# When present it assigns Metro/Micro Area + CBSA Code off the resolved county
+# FIPS; when absent those columns are NA and no cbsa artifact is published.
+cbsa_xw <- NULL
+cbsa_uri <- cfg$inputs$cbsa_crosswalk
+if (!is.null(cbsa_uri)) {
+  cbsa_local <- file.path(cache, basename(cbsa_uri))
+  if (!file.exists(cbsa_local)) {
+    message("Downloading CBSA crosswalk ...")
+    system2("aws", c("s3", "cp", cbsa_uri, cbsa_local,
+                     "--profile", cfg$aws$profile), stdout = FALSE, stderr = FALSE)
+  }
+  if (file.exists(cbsa_local)) {
+    cbsa_xw <- read_cbsa_crosswalk(cbsa_local)
+    message("cbsa crosswalk rows: ", format(nrow(cbsa_xw), big.mark = ","))
+  } else {
+    message("  cbsa crosswalk unavailable (", cbsa_uri,
+            ") — Metro/Micro Area will be NA")
+  }
+}
+
+bmf <- read_bmf(bmf_local, cbsa_crosswalk = cbsa_xw, county_crosswalk = county_xw)
 message("BMF rows: ", format(nrow(bmf), big.mark = ","))
 
 # ---- 2. CORE (for static Size) ---------------------------------------------
@@ -169,6 +210,24 @@ panels$nested_geographies <- list(df = build_nested_geographies(bmf),
                                   format = "csv")
 message("nested_geographies rows: ",
         format(nrow(panels$nested_geographies$df), big.mark = ","))
+
+# County FIPS crosswalk artifact (canonical (state, county) -> FIPS), for
+# downstream FIPS-keyed filtering. Only emitted when the upstream crosswalk
+# was available this run.
+if (!is.null(county_xw)) {
+  panels$county_fips_crosswalk <- build_county_crosswalk(county_xw)
+  message("county_fips_crosswalk rows: ",
+          format(nrow(panels$county_fips_crosswalk), big.mark = ","))
+}
+
+# CBSA crosswalk artifact (county FIPS -> OMB Metro/Micro + CSA), for FIPS-keyed
+# metro rollups + audit. DATA-DERIVED universe (see read_cbsa_crosswalk caveat).
+# Only emitted when the upstream crosswalk was available this run.
+if (!is.null(cbsa_xw)) {
+  panels$cbsa_crosswalk <- build_cbsa_crosswalk(cbsa_xw)
+  message("cbsa_crosswalk rows: ",
+          format(nrow(panels$cbsa_crosswalk), big.mark = ","))
+}
 
 # ---- 4e. Data dictionary ----------------------------------------------------
 # Build from the actual schemas + curated descriptions. Lives in the same

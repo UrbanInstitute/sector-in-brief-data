@@ -4,11 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-Scaffold + Phase 4 are landed. First production vintage `v2026.05` shipped 2026-05-21 to `s3://nccsdata/sector-in-brief/v2026.05/` with a `latest/` mirror, and the dashboard cut over. The predecessor repo `UrbanInstitute/nccs-dataexplorer-data` is archived.
+Scaffold + Phase 4 are landed. The predecessor repo `UrbanInstitute/nccs-dataexplorer-data` is archived. Production vintages shipped to `s3://nccsdata/sector-in-brief/`:
 
-Two more panels — `gov_grants` and `pf_pri` — are built and verified against live data (branch `feat/gov-grants-pf-pri-panels`, 2026-05-29) but **not yet published to a vintage**. They source the efile Phase 0 slice (`s3://nccsdata/processed/efile/phase0/latest/`), which went live 2026-05-29. Both cover **2021–2023 only** (e-file is complete from 2021; 2024 filings are still arriving). Publishing them needs a vintage bump past the frozen `v2026.05`.
+- **`v2026.05`** (2026-05-21) — first production vintage; dashboard cut over.
+- **`v2026.06`** (2026-06-03) — added the `government_grants` + `program_related_investments` panels (efile Phase 0 slice, `s3://nccsdata/processed/efile/phase0/latest/`; 2021–2023 only — e-file complete from 2021, 2024 still arriving).
+- **`v2026.07`** (2026-06-04, **current / `latest/`**) — FIPS-keyed county + CBSA geography (ADR 0021): every panel gains `County FIPS` + `CBSA Code`, `Census County` is canonicalized (NA = unassigned), and `cbsa_crosswalk.parquet` + enriched `county_fips_crosswalk.parquet` / `nested_geographies.csv` are published. See "Geography (authoritative)".
 
-For the canonical, post-cutover data model (inputs, outputs, scope), use the project-data-model memory record. BOOTSTRAP is historical.
+Each vintage is immutable; bump `vintage:` in `config.yml` before publishing a new one. For the canonical, post-cutover data model (inputs, outputs, scope), use the project-data-model memory record. BOOTSTRAP is historical.
 
 ## What this repo does
 
@@ -33,10 +35,47 @@ This repo's panel output column names are the contract. The dashboard conforms. 
 
 - `Size` — static per-EIN size band by total **expenses** (NOT assets — the dashboard's prior `Asset Size` label is a misnomer; expenses is what `derive_size` consumes).
 - `Metro/Micro Area` — OMB CBSA name. Replaces the dashboard's prior `Census CBSA` (which was an internal join-key name, not a user-facing concept).
+- `County FIPS` — 5-char county GEOID (character, leading zeros preserved). The collision-proof identity key for a county.
+- `CBSA Code` — OMB CBSA code (character). The identity key for a Metro/Micro area.
 - `Year` — tax year as reported on the filing. Replaces the dashboard's prior `Tax Year`.
 - All other dimension columns retain the title-case names already in use (`Organization Type`, `Subsector`, `Census Region`, `Census State`, `Census County`).
 
 `R/data_dictionary_curation.R` carries the per-(file, column) descriptions; `build_data_dictionary()` fails loudly if a panel column lacks a description or a curated entry has gone stale.
+
+### Geography (authoritative)
+
+County + CBSA geography is resolved in `R/read_bmf.R` (the only boundary that
+sees BMF source geo names) by left-joining two crosswalks `nccs-data-bmf`
+publishes to S3 (`inputs.county_crosswalk`, `inputs.cbsa_crosswalk`; vintage
+TIGER/OMB 2023). Both are optional — absent → graceful pass-through.
+
+- **Join chain:** BMF `(geo_state_abbr, geo_county)` → county crosswalk
+  (`geo_county_raw`) ⇒ canonical name + `County FIPS`; then `County FIPS` →
+  cbsa crosswalk (`county_fips`) ⇒ `Metro/Micro Area` + `CBSA Code`. FIPS-keyed,
+  so collision-proof (Baltimore city `24510` vs Baltimore County `24005`).
+- **FIPS / CBSA codes are the identity key; names are display only.** Both codes
+  ride in every panel (cardinality-free — 1:1 with their names) so the dashboard
+  filters by code with no name round-trip. When filtering by a named county,
+  pull its FIPS from the crosswalk — never hardcode it.
+- **Correctness rule:** `Census County` = the canonical name, which is **NA for
+  any ambiguous/unresolved label** (bare "Baltimore"/"St. Louis", the CT
+  planning-region labels, cross-state mislabels — 16 label groups). An
+  unmappable label becomes honest **unassigned (NA)**, never raw passthrough, so
+  it can't pollute a dropdown or masquerade as a clean county.
+- **NA semantics:** NA `Census County`/`County FIPS` = unassigned (mapping
+  failure); non-NA county + NA `Metro/Micro Area`/`CBSA Code` = rural (no CBSA).
+  The published `county_fips_crosswalk.parquet` carries `Resolution`
+  (`resolved`/`ambiguous`/`unresolved`) so the reason for every NA is auditable.
+- **Producer/dashboard split:** this repo owns identity (canonicalize, FIPS,
+  CBSA, retain NA cells, publish crosswalks + the enriched
+  `nested_geographies` lookup). The dashboard derives presentation at runtime —
+  dropdown options = `distinct()` of a panel's geo columns; "N records
+  unassigned" per state = sum of the NA-geography cells — so both stay consistent
+  with the panels by construction. We do not pre-bake those.
+- **Caveat:** the published `cbsa_crosswalk.parquet` is DATA-DERIVED (only
+  resolved counties present in our data, left-joined to OMB) — fine for these
+  record-level joins, but **not** the full OMB universe and **not** a complete
+  allowlist for UI dropdowns.
 
 ## Architecture
 
@@ -51,7 +90,7 @@ Key invariants:
 
 - **`R/read_bmf.R` is the only place that knows new-BMF source column names.** It returns canonical names (`EIN2`, `NTEEV2`, `BMF_SUBSECTION_CODE`, `F990_TOTAL_ASSETS_RECENT`, `CENSUS_*`, `NCCS_LEVEL_1`, `ORG_YEAR_FIRST/LAST`). See translation table in `NEW_REPO_BOOTSTRAP.md` §"BMF input translation". Panel builders consume canonical names.
 - **Derivation functions are pure and consolidated** into `R/derive_dimensions.R` + `R/derive_ein.R`. The old repo duplicated these as inline `case_when` chains across `01_bmf_data.R` and `10_api_data.R` (Title Case vs SCREAMING_SNAKE). One definition each, tested against fixtures.
-- **Every panel parquet uses the same dimension column names and types** — exact strings: `Organization Type`, `Subsector`, `Size` (int32, 0–6), `Census Region`, `Census State`, `Census County`, `Metro/Micro Area`, and `Year` (int32) where temporal. No `Tax Year` / `TAX_YEAR` drift. See the per-panel metric-column table in `NEW_REPO_BOOTSTRAP.md` §"Output contract".
+- **Every panel parquet uses the same dimension column names and types** — exact strings: `Organization Type`, `Subsector`, `Size` (int32, 0–6), `Census Region`, `Census State`, `Census County`, `County FIPS` (chr), `Metro/Micro Area`, `CBSA Code` (chr), and `Year` (int32) where temporal. No `Tax Year` / `TAX_YEAR` drift. See the per-panel metric-column table in `NEW_REPO_BOOTSTRAP.md` §"Output contract".
 - **All paths come from `config.yml` via `read_config()`.** No hardcoded relative paths, no `setwd()`, runnable from repo root.
 - **Every published vintage drops `_manifest.json`** alongside the parquets with sha256, row counts, input ETags, git SHA. No silent overwrites of `latest/`.
 

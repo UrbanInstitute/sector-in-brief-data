@@ -5,10 +5,10 @@
 # no longer exists).
 #
 # Schema fields:
-#   description     — what the value means, plain English
-#   form_source     — IRS Form 990 line(s) where applicable, or pipeline derivation
-#   coverage        — year range as observed in the output
-#   coverage_notes  — known limitations / gaps; surfaces in dashboard tooltips
+#   description     \u2014 what the value means, plain English
+#   form_source     \u2014 IRS Form 990 line(s) where applicable, or pipeline derivation
+#   coverage        \u2014 year range as observed in the output
+#   coverage_notes  \u2014 known limitations / gaps; surfaces in dashboard tooltips
 
 # Shared dimension columns appear in every panel. Defined once, expanded per
 # panel by build_data_dictionary().
@@ -19,8 +19,10 @@
   "Size",              "Static per-EIN size band 1-6 by total_expenses, or 0 if no CORE filing ever observed. Locked per EIN \u2014 does not float year-to-year.", "Derived from most-recent non-NA total_expenses across CORE 990 + 990-PF.", "Size=0 means the org has BMF metadata but no CORE filing on record.",
   "Census Region",     "US Census-defined region (Northeast / Midwest / South / West).",          "Derived from Census State via derive_census_region().",                "",
   "Census State",      "2-letter USPS state code from BMF geocode.",                              "BMF CENSUS_STATE_ABBR.",                                                "~8% of BMF rows have NA Census State \u2014 pass-through documented upstream gap.",
-  "Census County",     "Census-defined county name from BMF geocode.",                            "BMF CENSUS_COUNTY_NAME.",                                                "",
-  "Metro/Micro Area",  "OMB-defined CBSA name (Metropolitan or Micropolitan Statistical Area).",  "Joined from inst/lookups/cbsa_crosswalk.parquet (Census Jul 2023 OMB).", "NA for rural counties not in any CBSA \u2014 expected."
+  "Census County",     "Canonical Census county name (NAMELSAD), de-duplicated against the county FIPS crosswalk so 'Wayne' and 'Wayne County' collapse to one county.", "nccs-data-bmf county FIPS crosswalk, keyed on (state, raw label).", "NA = unassigned: the geocoded label was ambiguous or unresolved (bare 'Baltimore'/'St. Louis', CT planning-region labels, cross-state mislabels) and could not be mapped to one county. ~8% of rows also have NA state upstream.",
+  "County FIPS",       "5-character county GEOID (2-char state FIPS + 3-char county FIPS, leading zeros preserved). Stable, collision-proof key \u2014 prefer over the name (Baltimore city 24510 vs Baltimore County 24005).", "nccs-data-bmf county FIPS crosswalk (Census TIGER GEOID).", "NA wherever Census County is NA (unassigned).",
+  "Metro/Micro Area",  "OMB-defined CBSA name (Metropolitan or Micropolitan Statistical Area).",  "nccs-data-bmf cbsa_crosswalk, joined on County FIPS (OMB 2023).", "NA for rural counties (no CBSA) and for unassigned counties \u2014 distinguish via County FIPS / resolution.",
+  "CBSA Code",         "OMB CBSA code for the Metro/Micro Area. Stable key for metro rollups.",   "nccs-data-bmf cbsa_crosswalk, joined on County FIPS (OMB 2023).", "NA for rural / unassigned counties."
 )
 
 # Per-panel non-dimension columns.
@@ -54,7 +56,24 @@
   "daf.parquet",               "Has DAF",             "Count of orgs in the cell with at least one DAF (num_dafs > 0).",                    "Derived per-row from Number of DAFs > 0, summed.",                                                   "",
   # nested_geographies
   "nested_geographies.csv",    "Census State",        "2-letter USPS state code.",                                                          "BMF.",                                                                                               "",
-  "nested_geographies.csv",    "Census County",       "County name.",                                                                        "BMF.",                                                                                               "",
-  "nested_geographies.csv",    "Metro/Micro Area",    "OMB CBSA name.",                                                                      "CBSA crosswalk.",                                                                                    "NA for rural counties.",
-  "nested_geographies.csv",    "Census Region",       "US Census region.",                                                                  "Derived from state.",                                                                                ""
+  "nested_geographies.csv",    "Census County",       "Canonical Census county name. Data-derived allowlist of selectable counties.",        "nccs-data-bmf county FIPS crosswalk.",                                                               "Unassigned (NA-county) rows are dropped from this lookup.",
+  "nested_geographies.csv",    "County FIPS",         "5-character county GEOID (leading zeros preserved). Stable county key.",               "nccs-data-bmf county FIPS crosswalk.",                                                               "",
+  "nested_geographies.csv",    "Metro/Micro Area",    "OMB CBSA name.",                                                                      "nccs-data-bmf cbsa_crosswalk (joined on County FIPS).",                                              "NA for rural counties.",
+  "nested_geographies.csv",    "CBSA Code",           "OMB CBSA code for the Metro/Micro Area.",                                              "nccs-data-bmf cbsa_crosswalk (joined on County FIPS).",                                              "NA for rural counties.",
+  "nested_geographies.csv",    "Census Region",       "US Census region.",                                                                  "Derived from state.",                                                                                "",
+  # county_fips_crosswalk
+  "county_fips_crosswalk.parquet", "Census State",    "2-letter USPS state code.",                                                          "nccs-data-bmf county FIPS crosswalk.",                                                               "",
+  "county_fips_crosswalk.parquet", "County (raw)",    "Raw free-text county label as emitted by the geocoder, before canonicalization. Audit trail for every label and its fate.", "nccs-data-bmf county FIPS crosswalk (geo_county_raw).",                                  "",
+  "county_fips_crosswalk.parquet", "Census County",   "Canonical Census county name (NAMELSAD: County / Parish / Borough / Census Area / Municipality / independent city / Municipio).", "nccs-data-bmf county FIPS crosswalk (resolved from geocoded lat/lon via Census TIGER).", "NA when Resolution is not 'resolved'.",
+  "county_fips_crosswalk.parquet", "County FIPS",     "5-character county GEOID (2-char state FIPS + 3-char county FIPS, leading zeros preserved). Stable key for county-level filtering \u2014 use this rather than the name, which collides across states.", "nccs-data-bmf county FIPS crosswalk (Census TIGER GEOID).", "NA when Resolution is not 'resolved'.",
+  "county_fips_crosswalk.parquet", "Resolution",      "Upstream verdict on mapping the raw label to one Census county: 'resolved' (one match, has FIPS), 'ambiguous' (could be >1 county, e.g. bare Baltimore / CT planning regions; NA FIPS), 'unresolved' (cross-state mislabel; NA FIPS).", "nccs-data-bmf county FIPS crosswalk.", "Explains every NA FIPS \u2014 lets consumers tell mapping failure from rural.",
+  # cbsa_crosswalk (DATA-DERIVED universe \u2014 see caveat below)
+  "cbsa_crosswalk.parquet",    "County FIPS",         "5-character county GEOID (leading zeros preserved). Join key to the county dimension.", "nccs-data-bmf cbsa_crosswalk.",                                                                  "",
+  "cbsa_crosswalk.parquet",    "CBSA Code",           "OMB CBSA code.",                                                                       "nccs-data-bmf cbsa_crosswalk (OMB 2023 delineation).",                                              "",
+  "cbsa_crosswalk.parquet",    "Metro/Micro Area",    "OMB CBSA title (Metropolitan or Micropolitan Statistical Area name).",                  "nccs-data-bmf cbsa_crosswalk (OMB 2023 delineation).",                                              "",
+  "cbsa_crosswalk.parquet",    "CBSA Type",           "'Metropolitan Statistical Area' or 'Micropolitan Statistical Area'.",                   "nccs-data-bmf cbsa_crosswalk (OMB 2023 delineation).",                                              "",
+  "cbsa_crosswalk.parquet",    "Central/Outlying",    "Whether the county is 'Central' or 'Outlying' within its CBSA.",                         "nccs-data-bmf cbsa_crosswalk (OMB 2023 delineation).",                                              "",
+  "cbsa_crosswalk.parquet",    "CSA Code",            "OMB Combined Statistical Area code, for rolling CBSAs up to CSAs.",                     "nccs-data-bmf cbsa_crosswalk (OMB 2023 delineation).",                                              "NA when the CBSA is not part of any CSA.",
+  "cbsa_crosswalk.parquet",    "CSA Title",           "OMB Combined Statistical Area name.",                                                   "nccs-data-bmf cbsa_crosswalk (OMB 2023 delineation).",                                              "NA when the CBSA is not part of any CSA.",
+  "cbsa_crosswalk.parquet",    "Delineation Year",    "OMB delineation vintage (2023).",                                                       "nccs-data-bmf cbsa_crosswalk.",                                                                     "DATA-DERIVED universe: only resolved counties present in our geocoded data, left-joined to OMB. NOT the full OMB county/CBSA universe; do not use as a complete dropdown allowlist."
 )

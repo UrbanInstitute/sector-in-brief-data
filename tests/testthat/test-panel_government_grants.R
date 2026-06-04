@@ -7,7 +7,9 @@
     `Census Region` = "Northeast",
     `Census State`  = "NY",
     `Census County` = "Kings County",
-    `Metro/Micro Area` = NA_character_
+    `Metro/Micro Area` = NA_character_,
+    `County FIPS` = NA_character_,
+    `CBSA Code` = NA_character_
   )
 }
 
@@ -56,8 +58,8 @@ test_that("build_government_grants emits the contract schema", {
   out <- build_government_grants(.gg_row("A", 2021), .gg_org("A"), years = 2021L)
   expect_equal(colnames(out),
                c("Organization Type", "Subsector", "Size",
-                 "Census Region", "Census State", "Census County",
-                 "Metro/Micro Area", "Year", "Total Government Grants"))
+                 "Census Region", "Census State", "Census County", "County FIPS",
+                 "Metro/Micro Area", "CBSA Code", "Year", "Total Government Grants"))
   expect_type(out$Year, "integer")
   expect_type(out$`Total Government Grants`, "double")
 })

@@ -7,7 +7,9 @@
     `Census Region` = "West",
     `Census State`  = "CA",
     `Census County` = "Los Angeles County",
-    `Metro/Micro Area` = "Los Angeles-Long Beach-Anaheim, CA"
+    `Metro/Micro Area` = "Los Angeles-Long Beach-Anaheim, CA",
+    `County FIPS` = "06037",
+    `CBSA Code` = "31080"
   )
 }
 
@@ -56,8 +58,8 @@ test_that("build_program_related_investments emits the contract schema", {
   out <- build_program_related_investments(.pri_row("A", 2021), .pri_org("A"), years = 2021L)
   expect_equal(colnames(out),
                c("Organization Type", "Subsector", "Size",
-                 "Census Region", "Census State", "Census County",
-                 "Metro/Micro Area", "Year", "Total Program-Related Investments"))
+                 "Census Region", "Census State", "Census County", "County FIPS",
+                 "Metro/Micro Area", "CBSA Code", "Year", "Total Program-Related Investments"))
   expect_type(out$Year, "integer")
   expect_type(out$`Total Program-Related Investments`, "double")
 })
