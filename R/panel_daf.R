@@ -1,6 +1,6 @@
 .DAF_DIMS <- c("Organization Type", "Subsector", "Size",
-               "Census Region", "Census State", "Census County",
-               "Metro/Micro Area")
+               "Census Region", "Census State", "Census County", "County FIPS",
+               "Metro/Micro Area", "CBSA Code")
 
 .daf_na_sum <- function(x) if (all(is.na(x))) NA_real_ else sum(x, na.rm = TRUE)
 

@@ -5,7 +5,9 @@
   `Census Region` = "Northeast",
   `Census State` = "NY",
   `Census County` = "Kings",
-  `Metro/Micro Area` = NA_character_
+  `County FIPS` = NA_character_,
+  `Metro/Micro Area` = NA_character_,
+  `CBSA Code` = NA_character_
 )
 
 .dd_make_panel <- function(extra_cols) {
@@ -31,8 +33,9 @@ test_that("build_data_dictionary covers every column in every panel", {
                                         `Total Value` = 1000,
                                         `Has DAF` = 1L)),
     `nested_geographies.csv` = tibble::tibble(
-      `Census State` = "NY", `Census County` = "Kings",
-      `Metro/Micro Area` = "New York, NY", `Census Region` = "Northeast")
+      `Census State` = "NY", `Census County` = "Kings", `County FIPS` = "36047",
+      `Metro/Micro Area` = "New York, NY", `CBSA Code` = "35620",
+      `Census Region` = "Northeast")
   )
   dd <- build_data_dictionary(panels)
   expect_equal(colnames(dd),
@@ -69,14 +72,16 @@ test_that("build_data_dictionary computes per-file year coverage from data", {
                                              `Total Benefits` = c(1, 2, 3)))[
       rep(1, 3), ],
     `nested_geographies.csv` = tibble::tibble(
-      `Census State` = "NY", `Census County` = "Kings",
-      `Metro/Micro Area` = "New York, NY", `Census Region` = "Northeast")
+      `Census State` = "NY", `Census County` = "Kings", `County FIPS` = "36047",
+      `Metro/Micro Area` = "New York, NY", `CBSA Code` = "35620",
+      `Census Region` = "Northeast")
   )
   # Need to actually vary Year — rebuild
   fin <- tibble::tibble(
     `Organization Type` = "501(c)(3) Public Charities", Subsector = "ART",
     Size = 1L, `Census Region` = "Northeast", `Census State` = "NY",
-    `Census County` = "Kings", `Metro/Micro Area` = NA_character_,
+    `Census County` = "Kings", `County FIPS` = NA_character_,
+    `Metro/Micro Area` = NA_character_, `CBSA Code` = NA_character_,
     Year = c(2010L, 2020L, 2024L),
     `Total Revenues` = c(1,2,3), `Total Expenses` = c(1,2,3),
     `Total Assets` = c(1,2,3), `Total Benefits` = c(1,2,3)

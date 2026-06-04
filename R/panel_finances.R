@@ -1,6 +1,6 @@
 .FIN_DIMS <- c("Organization Type", "Subsector", "Size",
-               "Census Region", "Census State", "Census County",
-               "Metro/Micro Area")
+               "Census Region", "Census State", "Census County", "County FIPS",
+               "Metro/Micro Area", "CBSA Code")
 .FIN_METRICS <- c("Total Revenues", "Total Expenses",
                   "Total Assets", "Total Benefits")
 

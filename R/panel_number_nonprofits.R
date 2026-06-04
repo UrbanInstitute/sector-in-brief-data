@@ -1,6 +1,6 @@
 .NN_DIMS <- c("Organization Type", "Subsector", "Size",
-              "Census Region", "Census State", "Census County",
-              "Metro/Micro Area")
+              "Census Region", "Census State", "Census County", "County FIPS",
+              "Metro/Micro Area", "CBSA Code")
 
 #' Build the number_nonprofits panel
 #'

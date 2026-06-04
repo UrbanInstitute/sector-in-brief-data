@@ -9,7 +9,9 @@
     `Census Region` = "Northeast",
     `Census State`  = "NY",
     `Census County` = "Cook County",
-    `Metro/Micro Area` = NA_character_
+    `Metro/Micro Area` = NA_character_,
+    `County FIPS` = NA_character_,
+    `CBSA Code` = NA_character_
   )
 }
 
@@ -95,8 +97,8 @@ test_that("build_daf emits the contract schema", {
   out <- build_daf(daf, .daf_org("A"), years = 2022L)
   expect_equal(colnames(out),
                c("Organization Type", "Subsector", "Size",
-                 "Census Region", "Census State", "Census County",
-                 "Metro/Micro Area", "Year",
+                 "Census Region", "Census State", "Census County", "County FIPS",
+                 "Metro/Micro Area", "CBSA Code", "Year",
                  "Number of Nonprofits",
                  "Number of DAFs", "Total Contributions",
                  "Total Grants", "Total Value", "Has DAF"))
