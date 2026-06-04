@@ -4,11 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-Scaffold + Phase 4 are landed. First production vintage `v2026.05` shipped 2026-05-21 to `s3://nccsdata/sector-in-brief/v2026.05/` with a `latest/` mirror, and the dashboard cut over. The predecessor repo `UrbanInstitute/nccs-dataexplorer-data` is archived.
+Scaffold + Phase 4 are landed. The predecessor repo `UrbanInstitute/nccs-dataexplorer-data` is archived. Production vintages shipped to `s3://nccsdata/sector-in-brief/`:
 
-Two more panels — `gov_grants` and `pf_pri` — are built and verified against live data (branch `feat/gov-grants-pf-pri-panels`, 2026-05-29) but **not yet published to a vintage**. They source the efile Phase 0 slice (`s3://nccsdata/processed/efile/phase0/latest/`), which went live 2026-05-29. Both cover **2021–2023 only** (e-file is complete from 2021; 2024 filings are still arriving). Publishing them needs a vintage bump past the frozen `v2026.05`.
+- **`v2026.05`** (2026-05-21) — first production vintage; dashboard cut over.
+- **`v2026.06`** (2026-06-03) — added the `government_grants` + `program_related_investments` panels (efile Phase 0 slice, `s3://nccsdata/processed/efile/phase0/latest/`; 2021–2023 only — e-file complete from 2021, 2024 still arriving).
+- **`v2026.07`** (2026-06-04, **current / `latest/`**) — FIPS-keyed county + CBSA geography (ADR 0021): every panel gains `County FIPS` + `CBSA Code`, `Census County` is canonicalized (NA = unassigned), and `cbsa_crosswalk.parquet` + enriched `county_fips_crosswalk.parquet` / `nested_geographies.csv` are published. See "Geography (authoritative)".
 
-For the canonical, post-cutover data model (inputs, outputs, scope), use the project-data-model memory record. BOOTSTRAP is historical.
+Each vintage is immutable; bump `vintage:` in `config.yml` before publishing a new one. For the canonical, post-cutover data model (inputs, outputs, scope), use the project-data-model memory record. BOOTSTRAP is historical.
 
 ## What this repo does
 
