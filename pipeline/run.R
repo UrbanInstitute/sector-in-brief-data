@@ -73,7 +73,31 @@ if (!is.null(cbsa_uri)) {
   }
 }
 
-bmf <- read_bmf(bmf_local, cbsa_crosswalk = cbsa_xw, county_crosswalk = county_xw)
+# CT planning-region crosswalk (nccs-data-bmf) — optional. Connecticut's retired
+# counties span multiple 2022 planning regions, so CT is unresolvable by label;
+# this crosswalk lets read_bmf resolve CT rows by coordinate. When absent, CT
+# rows stay unassigned (the pre-2026.08 behavior).
+ct_xw <- NULL
+ct_uri <- cfg$inputs$ct_planning_region_crosswalk
+if (!is.null(ct_uri)) {
+  ct_local <- file.path(cache, basename(ct_uri))
+  if (!file.exists(ct_local)) {
+    message("Downloading CT planning-region crosswalk ...")
+    system2("aws", c("s3", "cp", ct_uri, ct_local,
+                     "--profile", cfg$aws$profile), stdout = FALSE, stderr = FALSE)
+  }
+  if (file.exists(ct_local)) {
+    ct_xw <- read_ct_planning_region_crosswalk(ct_local)
+    message("CT planning-region crosswalk rows: ",
+            format(nrow(ct_xw), big.mark = ","))
+  } else {
+    message("  CT planning-region crosswalk unavailable (", ct_uri,
+            ") — Connecticut will stay unassigned")
+  }
+}
+
+bmf <- read_bmf(bmf_local, cbsa_crosswalk = cbsa_xw, county_crosswalk = county_xw,
+                ct_crosswalk = ct_xw)
 message("BMF rows: ", format(nrow(bmf), big.mark = ","))
 
 # ---- 2. CORE (for static Size) ---------------------------------------------

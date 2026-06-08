@@ -1,4 +1,4 @@
-vintage: "2026.07"
+vintage: "2026.08"
 
 inputs:
   bmf: "s3://nccsdata/geocoding/bmf-master/merged/bmf_master_geocoded.parquet"
@@ -16,6 +16,16 @@ inputs:
   # to OMB 2023) -- not the full OMB universe; not a dropdown allowlist source.
   # OPTIONAL: when absent Metro/Micro Area is NA and no cbsa artifact is emitted.
   cbsa_crosswalk: "s3://nccsdata/crosswalks/cbsa/cbsa_crosswalk.parquet"
+  # CT planning-region crosswalk (nccs-data-bmf; ADR 0023). Connecticut retired
+  # its 8 counties for 9 Census planning regions (GEOIDs 09110-09190) in 2022;
+  # each old county spans multiple regions, so CT is unresolvable at the
+  # (state, county-label) grain (all CT labels are ambiguous -> NA in the county
+  # FIPS crosswalk). This artifact is one row per CT-land 0.01-degree grid cell,
+  # letting read_bmf resolve CT rows by COORDINATE (rounded geo_lat/geo_lon ->
+  # 091xx GEOID), which then feeds the existing FIPS-keyed CBSA rollup. Same
+  # vintage trio as the county-fips + cbsa crosswalks (TIGER/OMB 2023 -- do NOT
+  # mix vintages). OPTIONAL: when absent CT rows stay unassigned as before.
+  ct_planning_region_crosswalk: "s3://nccsdata/crosswalks/ct-planning-region/ct_planning_region_crosswalk.parquet"
   # 990combined for 1989-2011 (only file available); carries Pt IX 5+7 inline.
   core_legacy: "s3://nccsdata/processed_legacy/core/"
   # 990combined (intersection 990+990EZ) and 990 (full, with Pt IX 5/6/7/8/9)
