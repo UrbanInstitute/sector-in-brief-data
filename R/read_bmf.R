@@ -26,6 +26,8 @@
 #'   \item `Census State` — character, 2-letter postal code.
 #'   \item `Census County` — character, canonical county name; NA when the label
 #'         was ambiguous / unresolved (unassigned) or no county crosswalk given.
+#'         Connecticut is resolved by coordinate (planning regions) when a
+#'         `ct_crosswalk` is supplied — see that parameter.
 #'   \item `County FIPS` — character, 5-char county GEOID; NA when unassigned.
 #'   \item `Metro/Micro Area` — character, CBSA name; NA when rural (no CBSA) or
 #'         the county is unassigned.
@@ -49,9 +51,19 @@
 #' @param county_crosswalk Path (or pre-read tibble from [read_county_crosswalk])
 #'   to the county FIPS crosswalk, or `NULL` to pass county labels through raw
 #'   (no canonicalization, no FIPS, no CBSA).
+#' @param ct_crosswalk Path (or pre-read tibble from
+#'   [read_ct_planning_region_crosswalk]) to the Connecticut planning-region
+#'   crosswalk, or `NULL` to skip CT coordinate resolution. CT's `<name> County`
+#'   labels cannot identify a 2022 planning region (its retired counties each
+#'   span several), so the label chain is unreliable for CT. When this crosswalk
+#'   is supplied, CT rows are resolved by COORDINATE (rounded `(geo_lat,
+#'   geo_lon)` → 091xx GEOID) and the coordinate is AUTHORITATIVE — it overrides
+#'   the label result for every CT row that resolves. The 091xx FIPS then feeds
+#'   the existing FIPS-keyed CBSA rollup with no CBSA-side change.
 #' @return tibble with the canonical schema above.
 #' @export
-read_bmf <- function(path, cbsa_crosswalk = NULL, county_crosswalk = NULL) {
+read_bmf <- function(path, cbsa_crosswalk = NULL, county_crosswalk = NULL,
+                     ct_crosswalk = NULL) {
   bmf <- arrow::read_parquet(path)
 
   # Upstream BMF occasionally emits "" instead of NA for ungeocoded geo cells.
@@ -59,6 +71,12 @@ read_bmf <- function(path, cbsa_crosswalk = NULL, county_crosswalk = NULL) {
   na_if_blank <- function(x) ifelse(!is.na(x) & nzchar(trimws(x)), x, NA_character_)
   geo_state  <- na_if_blank(bmf$geo_state_abbr)
   geo_county <- na_if_blank(bmf$geo_county)
+
+  # Geocoded coordinates power the CT-by-coordinate resolution below. Tolerate
+  # their absence (older fixtures / pre-geocode inputs lack them) → NA, which
+  # simply leaves CT unresolved exactly as before.
+  geo_lat <- if ("geo_lat" %in% names(bmf)) as.numeric(bmf$geo_lat) else rep(NA_real_, nrow(bmf))
+  geo_lon <- if ("geo_lon" %in% names(bmf)) as.numeric(bmf$geo_lon) else rep(NA_real_, nrow(bmf))
 
   # Canonicalize the county label against the published FIPS crosswalk and pull
   # the stable County FIPS. Non-resolved / unknown labels resolve to NA (honest
@@ -72,6 +90,25 @@ read_bmf <- function(path, cbsa_crosswalk = NULL, county_crosswalk = NULL) {
   } else {
     census_county <- geo_county
     county_fips   <- rep(NA_character_, length(geo_county))
+  }
+
+  # Connecticut: its retired counties span multiple 2022 planning regions, so a
+  # county LABEL cannot say which region a point is in. The label chain above is
+  # therefore unreliable for CT — it either defers to NA or force-maps a label to
+  # a single region that is wrong for the ~4.5% of CT points whose coordinate
+  # falls in a different region of the same old county. Resolve CT by COORDINATE
+  # instead (round (geo_lat, geo_lon) to the 0.01° grid → planning-region GEOID),
+  # and let the coordinate be AUTHORITATIVE: it overrides the label result for
+  # every CT row that resolves, not just the NA ones. Only CT rows are touched;
+  # a CT point that fails to resolve (off-grid) keeps whatever the label gave.
+  # The 091xx FIPS then rides through the FIPS-keyed CBSA rollup below unchanged.
+  if (!is.null(ct_crosswalk)) {
+    ctxw <- if (is.character(ct_crosswalk))
+      read_ct_planning_region_crosswalk(ct_crosswalk) else ct_crosswalk
+    ct <- ct_planning_region_for_coord(geo_state, geo_lat, geo_lon, ctxw)
+    override <- geo_state %in% "CT" & !is.na(ct$`County FIPS`)
+    census_county[override] <- ct$`Census County`[override]
+    county_fips[override]   <- ct$`County FIPS`[override]
   }
 
   # Parse "YYYY-MM" → integer YYYY for org_year_last.

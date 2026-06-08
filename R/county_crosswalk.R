@@ -91,6 +91,90 @@ read_cbsa_crosswalk <- function(path) {
   )
 }
 
+#' Read the Connecticut planning-region crosswalk (canonical schema)
+#'
+#' Source: `ct_planning_region_crosswalk.parquet` from nccs-data-bmf. Connecticut
+#' retired its 8 historical counties for 9 Census planning regions (GEOIDs
+#' `09110`–`09190`) effective 2022, and each old county spans MULTIPLE planning
+#' regions — so CT cannot be resolved at the `(state, county-label)` grain the
+#' county FIPS crosswalk uses (all 8 CT labels are `ambiguous`/deferred → NA FIPS
+#' there). CT is instead resolved by COORDINATE: this artifact is one row per
+#' CT-land 0.01-degree grid cell, cut from TIGER 2023 planning-region polygons,
+#' so every CT coordinate lands on a cell.
+#'
+#' Grain: unique on `(lat2, lon2)` — the assigned region is the area-majority
+#' when a cell straddles a boundary (`straddle = TRUE`, advisory, ~1.3% of land
+#' cells). Vintage-coupled with the county FIPS + CBSA crosswalks (TIGER/OMB
+#' 2023); do not mix vintages across the three.
+#'
+#' @param path local path or S3 URI to `ct_planning_region_crosswalk.parquet`.
+#' @return tibble with `geo_state_abbr`, `geo_county_fips`, `state_fips`,
+#'   `geo_county_canonical` (character — GEOIDs keep leading zeros), `lat2`,
+#'   `lon2`, `area_share` (numeric), `straddle` (logical), `tiger_year`
+#'   (integer).
+#' @export
+read_ct_planning_region_crosswalk <- function(path) {
+  df <- arrow::read_parquet(path) |> as.data.frame()
+  req <- c("geo_state_abbr", "lat2", "lon2", "geo_county_fips", "state_fips",
+           "geo_county_canonical", "area_share", "straddle", "tiger_year")
+  for (col in req) {
+    if (!col %in% names(df)) {
+      stop("read_ct_planning_region_crosswalk: expected column '", col,
+           "' missing from ", path, call. = FALSE)
+    }
+  }
+  tibble::tibble(
+    geo_state_abbr       = as.character(df$geo_state_abbr),
+    lat2                 = as.numeric(df$lat2),
+    lon2                 = as.numeric(df$lon2),
+    geo_county_fips      = as.character(df$geo_county_fips),
+    state_fips           = as.character(df$state_fips),
+    geo_county_canonical = as.character(df$geo_county_canonical),
+    area_share           = as.numeric(df$area_share),
+    straddle             = as.logical(df$straddle),
+    tiger_year           = as.integer(df$tiger_year)
+  )
+}
+
+#' Resolve Connecticut rows to a planning region by coordinate
+#'
+#' Companion to the label-based [canonicalize_county_label] /
+#' [county_fips_for_label], for Connecticut only. Rounds each row's geocoded
+#' `(geo_lat, geo_lon)` to the 0.01-degree grid and joins the CT crosswalk to
+#' recover the planning-region GEOID + canonical name. Only `geo_state_abbr ==
+#' "CT"` rows with non-NA coordinates are resolved; every other row returns NA
+#' so the caller keeps its label-resolved value untouched. The crosswalk is
+#' unique on `(lat2, lon2)`, so `match()` never fans rows out.
+#'
+#' Grid keys are formatted to exactly 2 decimals on BOTH sides (`sprintf`),
+#' making the join robust to floating-point noise.
+#'
+#' @param state_abbr character vector (BMF geocoded state abbr).
+#' @param geo_lat,geo_lon numeric vectors (BMF geocoded coordinates).
+#' @param crosswalk tibble from [read_ct_planning_region_crosswalk].
+#' @return tibble with `Census County` (canonical planning-region name) and
+#'   `County FIPS` (091xx GEOID), NA outside CT / where the coordinate is
+#'   missing, same length as the inputs.
+#' @export
+ct_planning_region_for_coord <- function(state_abbr, geo_lat, geo_lon, crosswalk) {
+  n <- length(state_abbr)
+  fips <- rep(NA_character_, n)
+  name <- rep(NA_character_, n)
+
+  is_ct <- !is.na(state_abbr) & state_abbr == "CT" &
+           !is.na(geo_lat) & !is.na(geo_lon)
+  if (any(is_ct)) {
+    key_in <- paste(sprintf("%.2f", geo_lat[is_ct]),
+                    sprintf("%.2f", geo_lon[is_ct]))
+    key_xw <- paste(sprintf("%.2f", crosswalk$lat2),
+                    sprintf("%.2f", crosswalk$lon2))
+    idx <- match(key_in, key_xw)
+    fips[is_ct] <- crosswalk$geo_county_fips[idx]
+    name[is_ct] <- crosswalk$geo_county_canonical[idx]
+  }
+  tibble::tibble(`Census County` = name, `County FIPS` = fips)
+}
+
 #' Map raw `(state, county)` labels to their canonical county name
 #'
 #' Vectorized lookup against the crosswalk. Returns the canonical name, or `NA`
