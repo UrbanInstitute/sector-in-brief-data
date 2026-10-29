@@ -1,0 +1,13 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Sector in Brief data builder"
+type: software
+authors:
+  - family-names: Poongundranar
+    given-names: Thiyaghessan
+    affiliation: "National Center for Charitable Statistics, Urban Institute"
+  - name: "Urban Institute"
+repository-code: "https://github.com/UrbanInstitute/sector-in-brief-data"
+url: "https://nccs.urban.org"
+abstract: "R package that aggregates NCCS BMF, CORE and e-file surfaces into the vintage-tagged panel behind the Sector in Brief dashboard."
+date-released: "2026-10-29"
