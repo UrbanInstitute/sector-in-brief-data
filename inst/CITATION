@@ -1,0 +1,10 @@
+citHeader("To cite the Sector in Brief data builder in publications use:")
+
+bibentry(
+  bibtype = "Manual",
+  title   = "sector-in-brief-data: Sector in Brief panel builder",
+  author  = person("Thiyaghessan", "Poongundranar"),
+  year    = "2026",
+  note    = "R package",
+  url     = "https://github.com/UrbanInstitute/sector-in-brief-data"
+)

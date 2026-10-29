@@ -12,3 +12,5 @@
 ^\.cache$
 ^data-raw$
 ^\.claude$
+^\.mailmap$
+^CITATION\.cff$
