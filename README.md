@@ -1,5 +1,7 @@
 # sector-in-brief-data
 
+Maintained by Thiyaghessan Poongundranar, National Center for Charitable Statistics, Urban Institute, since May 2026.
+
 Producer pipeline for the parquet artifact consumed by the
 [Sector-in-Brief Shiny dashboard](https://github.com/UrbanInstitute/sector-in-brief).
 
