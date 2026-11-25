@@ -56,11 +56,11 @@ derive_size <- function(total_expenses) {
   as.integer(dplyr::case_when(
     is.na(total_expenses)        ~ 0,
     total_expenses < 100000      ~ 1,
-    total_expenses < 499999      ~ 2,
-    total_expenses < 999999      ~ 3,
-    total_expenses < 4999999     ~ 4,
-    total_expenses < 9999999     ~ 5,
-    total_expenses > 9999999     ~ 6,
+    total_expenses < 500000      ~ 2,
+    total_expenses < 1000000     ~ 3,
+    total_expenses < 5000000     ~ 4,
+    total_expenses < 10000000    ~ 5,
+    total_expenses >= 10000000   ~ 6,
     .default = 0
   ))
 }
