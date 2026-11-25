@@ -36,11 +36,31 @@ test_that("derive_size returns correct band for each boundary", {
   expect_equal(derive_size(99999),     1L)
   expect_equal(derive_size(100000),    2L)
   expect_equal(derive_size(499998),    2L)
-  expect_equal(derive_size(499999),    3L)  # case_when: first match (<999999) wins
+  expect_equal(derive_size(499999),    2L)
   expect_equal(derive_size(750000),    3L)
   expect_equal(derive_size(1500000),   4L)
   expect_equal(derive_size(7500000),   5L)
   expect_equal(derive_size(20000000),  6L)
+})
+
+test_that("derive_size covers both sides of every published band edge", {
+  expenses <- c(99999, 100000, 100001,
+                499998, 499999, 500000, 500001,
+                999998, 999999, 1000000, 1000001,
+                4999998, 4999999, 5000000, 5000001,
+                9999998, 9999999, 10000000, 10000001)
+  expected <- c(1L, 2L, 2L,
+                2L, 2L, 3L, 3L,
+                3L, 3L, 4L, 4L,
+                4L, 4L, 5L, 5L,
+                5L, 5L, 6L, 6L)
+  expect_identical(derive_size(expenses), expected)
+})
+
+test_that("derive_size has no gaps for fractional-dollar expenses", {
+  expect_identical(derive_size(c(99999.5, 499999.5, 999999.5,
+                                4999999.5, 9999999.5)),
+                   c(1L, 2L, 3L, 4L, 5L))
 })
 
 test_that("derive_size returns 0 for NA expenses", {
